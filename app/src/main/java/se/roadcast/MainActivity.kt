@@ -88,7 +88,12 @@ private fun RoadcastApp() {
                 composable(Destination.Player.route) {
                     val viewModel: PlayerViewModel = hiltViewModel()
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
-                    PlayerScreen(state, onOpenDebug = { navController.navigate(Destination.Debug.route) })
+                    PlayerScreen(
+                        state = state,
+                        onPlayPause = viewModel::playOrPause,
+                        onReplay = viewModel::replay,
+                        onOpenDebug = { navController.navigate(Destination.Debug.route) },
+                    )
                 }
                 composable(Destination.History.route) {
                     val viewModel: HistoryViewModel = hiltViewModel()

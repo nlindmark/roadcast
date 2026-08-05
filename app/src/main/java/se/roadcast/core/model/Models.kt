@@ -108,6 +108,25 @@ data class PodcastSegment(
     val storyAngleId: String? = null,
 )
 
+sealed interface PreviewPlaybackState {
+    @Serializable data object Idle : PreviewPlaybackState
+    @Serializable data object Initializing : PreviewPlaybackState
+    @Serializable
+    data class Playing(
+        val lineIndex: Int,
+        val line: DialogueLine,
+    ) : PreviewPlaybackState
+
+    @Serializable
+    data class Paused(
+        val lineIndex: Int,
+        val line: DialogueLine,
+    ) : PreviewPlaybackState
+
+    @Serializable data object Completed : PreviewPlaybackState
+    @Serializable data class Error(val message: String) : PreviewPlaybackState
+}
+
 @Serializable
 data class GeneratedSpeech(
     val uri: String,

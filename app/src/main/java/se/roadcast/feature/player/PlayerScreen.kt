@@ -21,9 +21,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import se.roadcast.core.model.HostId
+import se.roadcast.core.model.PreviewPlaybackState
 
 @Composable
-fun PlayerScreen(state: PlayerUiState, onOpenDebug: () -> Unit, modifier: Modifier = Modifier) {
+fun PlayerScreen(
+    state: PlayerUiState,
+    onPlayPause: () -> Unit,
+    onReplay: () -> Unit,
+    onOpenDebug: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         when (state) {
             PlayerUiState.Loading -> CircularProgressIndicator()
@@ -51,13 +59,84 @@ fun PlayerScreen(state: PlayerUiState, onOpenDebug: () -> Unit, modifier: Modifi
                     }
                 }
                 Spacer(Modifier.height(24.dp))
+                PlaybackDetails(state.playback)
+                Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = {}) { Text("Play preview") }
-                    OutlinedButton(onClick = onOpenDebug) { Text("Why this place?") }
+                    Button(
+                        onClick = onPlayPause,
+                        enabled = state.playback !is PreviewPlaybackState.Initializing,
+                    ) {
+                        Text(playbackAction(state.playback))
+                    }
+                    OutlinedButton(
+                        onClick = onReplay,
+                        enabled = state.segment != null || state.playback !is PreviewPlaybackState.Initializing,
+                    ) {
+                        Text("Replay")
+                    }
                 }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onOpenDebug) { Text("Why this place?") }
             }
         }
     }
+}
+
+@Composable
+private fun PlaybackDetails(playback: PreviewPlaybackState) {
+    when (playback) {
+        PreviewPlaybackState.Idle -> Text(
+            "Ready for a two-host preview",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PreviewPlaybackState.Initializing -> Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator()
+            Text("Preparing voices…")
+        }
+        is PreviewPlaybackState.Playing -> TranscriptCard(
+            host = playback.line.speaker,
+            text = playback.line.text,
+            status = "Playing",
+        )
+        is PreviewPlaybackState.Paused -> TranscriptCard(
+            host = playback.line.speaker,
+            text = playback.line.text,
+            status = "Paused",
+        )
+        PreviewPlaybackState.Completed -> Text("Preview finished")
+        is PreviewPlaybackState.Error -> Text(
+            playback.message,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun TranscriptCard(host: HostId, text: String, status: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "$status · ${if (host == HostId.HOST_A) "Liv, storyteller" else "Nils, specialist"}",
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Text(text, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+private fun playbackAction(playback: PreviewPlaybackState): String = when (playback) {
+    is PreviewPlaybackState.Playing -> "Pause"
+    is PreviewPlaybackState.Paused -> "Resume"
+    PreviewPlaybackState.Completed -> "Play again"
+    PreviewPlaybackState.Initializing -> "Preparing"
+    PreviewPlaybackState.Idle, is PreviewPlaybackState.Error -> "Play preview"
 }
 
 @Composable

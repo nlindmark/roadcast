@@ -7,7 +7,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import se.roadcast.core.ai.DialogueGenerator
 import se.roadcast.core.ai.UserSpeechRecognizer
+import se.roadcast.core.audio.AndroidTtsPreviewPlayer
 import se.roadcast.core.audio.PodcastOrchestrator
+import se.roadcast.core.audio.PodcastPreviewPlayer
 import se.roadcast.core.audio.SpeechGenerator
 import se.roadcast.core.database.HistoryStore
 import se.roadcast.core.location.CandidateRanker
@@ -36,6 +38,7 @@ abstract class SimulationBindings {
     @Binds abstract fun history(implementation: InMemoryHistoryStore): HistoryStore
     @Binds abstract fun dialogue(implementation: FakeDialogueGenerator): DialogueGenerator
     @Binds abstract fun speech(implementation: FakeSpeechGenerator): SpeechGenerator
+    @Binds abstract fun previewPlayer(implementation: AndroidTtsPreviewPlayer): PodcastPreviewPlayer
     @Binds abstract fun recognizer(implementation: FakeSpeechRecognizer): UserSpeechRecognizer
     @Binds abstract fun orchestrator(implementation: FakePodcastOrchestrator): PodcastOrchestrator
 }

@@ -33,6 +33,7 @@ class FakeDialogueGenerator @Inject constructor() : DialogueGenerator {
         val angle = knowledge.stories.firstOrNull()
         val firstFact = knowledge.facts.firstOrNull()
         val secondFact = knowledge.facts.drop(1).firstOrNull()
+        val placeName = angle?.title ?: "this place"
         return PodcastSegment(
             id = "segment-${knowledge.placeId}-${previousContext?.segmentSummaries?.size ?: 0}",
             placeId = knowledge.placeId,
@@ -40,17 +41,33 @@ class FakeDialogueGenerator @Inject constructor() : DialogueGenerator {
             storyAngleId = angle?.id,
             lines = listOf(
                 DialogueLine(
-                    id = "${knowledge.placeId}-host-a",
+                    id = "${knowledge.placeId}-host-a-intro",
                     speaker = HostId.HOST_A,
-                    text = angle?.premise ?: knowledge.overview,
+                    text = "Coming up is $placeName. ${angle?.premise ?: knowledge.overview}",
+                    interruptibleAfter = true,
+                    sourceIds = knowledge.sources.map { it.id },
+                    factIds = knowledge.facts.map { it.id },
+                ),
+                DialogueLine(
+                    id = "${knowledge.placeId}-host-b-detail",
+                    speaker = HostId.HOST_B,
+                    text = firstFact?.let { "One detail we can establish is that ${it.statement}" }
+                        ?: "The local fixture does not contain a verified detail beyond that summary.",
                     interruptibleAfter = true,
                     sourceIds = firstFact?.sourceIds.orEmpty(),
                     factIds = listOfNotNull(firstFact?.id),
                 ),
                 DialogueLine(
-                    id = "${knowledge.placeId}-host-b",
+                    id = "${knowledge.placeId}-host-a-follow-up",
+                    speaker = HostId.HOST_A,
+                    text = "And what is the other detail worth carrying into the story?",
+                    interruptibleAfter = true,
+                ),
+                DialogueLine(
+                    id = "${knowledge.placeId}-host-b-close",
                     speaker = HostId.HOST_B,
-                    text = secondFact?.statement ?: "That gives this place its distinctive character.",
+                    text = secondFact?.statement
+                        ?: "There is no second verified fact in this local package, so we will leave it there.",
                     interruptibleAfter = true,
                     sourceIds = secondFact?.sourceIds.orEmpty(),
                     factIds = listOfNotNull(secondFact?.id),
