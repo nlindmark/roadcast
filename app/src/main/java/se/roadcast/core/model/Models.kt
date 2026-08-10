@@ -104,7 +104,11 @@ data class PodcastSegment(
     val id: String,
     val placeId: String,
     val title: String,
-    val lines: List<DialogueLine>,
+    val intro: String? = null,
+    val dialogue: List<DialogueLine>,
+    val estimatedDurationSeconds: Int,
+    val generatedAtEpochMillis: Long,
+    val sourceIds: List<String> = emptyList(),
     val storyAngleId: String? = null,
 )
 

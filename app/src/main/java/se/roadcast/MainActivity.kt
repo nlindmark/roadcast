@@ -90,8 +90,10 @@ private fun RoadcastApp() {
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
                     PlayerScreen(
                         state = state,
+                        onToggleJourney = viewModel::toggleJourney,
                         onPlayPause = viewModel::playOrPause,
                         onReplay = viewModel::replay,
+                        onSkip = viewModel::skip,
                         onOpenDebug = { navController.navigate(Destination.Debug.route) },
                     )
                 }

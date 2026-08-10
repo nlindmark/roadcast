@@ -10,6 +10,7 @@ Roadcast is a location-aware travel podcast prototype. Phases 1 and 2 run entire
 - Pure Kotlin route geometry and transparent weighted place ranking.
 - A controllable simulation route through Gothenburg with six sourced places.
 - A grounded two-host preview spoken through Android's installed text-to-speech engine.
+- Validated dialogue JSON generation with automatic playback along the simulated route.
 - JVM unit tests for geometry and ranking behavior.
 
 ## Build
@@ -27,6 +28,6 @@ On Windows use `gradlew.bat`. The current implementation contains no secrets and
 
 Open **Debug** to start or pause route playback, reset, jump to the next route-adjacent place, or choose a 0.5×–4× speed. Candidate cards expose each score component, penalties, selection, and rationale. The Player destination reflects the highest-ranked eligible upcoming story.
 
-On **Player**, tap **Play preview** to generate a deterministic conversation from the selected place's verified fixture facts. Pause, resume, and replay are available. The two hosts use separate installed voices where the device provides them, with pitch and speaking-rate differences as a fallback. No network speech service is required.
+On **Player**, tap **Start journey** to move along the simulated route and autoplay the next ranked place. Pause, resume, replay, and skip are available. The two hosts use separate installed voices where the device provides them, with pitch and speaking-rate differences as a fallback. No network speech service is required.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for extraction boundaries and the milestone plan.

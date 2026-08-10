@@ -40,7 +40,7 @@ class AndroidTtsPreviewPlayer @Inject constructor(
                     synchronized(lock) {
                         val segment = currentSegment ?: return
                         val nextIndex = currentLineIndex + 1
-                        if (nextIndex > segment.lines.lastIndex) {
+                        if (nextIndex > segment.dialogue.lastIndex) {
                             _state.value = PreviewPlaybackState.Completed
                         } else {
                             speakLine(segment, nextIndex)
@@ -78,7 +78,7 @@ class AndroidTtsPreviewPlayer @Inject constructor(
     override fun pause() {
         synchronized(lock) {
             val segment = currentSegment ?: return
-            val line = segment.lines.getOrNull(currentLineIndex) ?: return
+            val line = segment.dialogue.getOrNull(currentLineIndex) ?: return
             engine.stop()
             _state.value = PreviewPlaybackState.Paused(currentLineIndex, line)
         }
@@ -111,7 +111,7 @@ class AndroidTtsPreviewPlayer @Inject constructor(
     }
 
     private fun speakLine(segment: PodcastSegment, index: Int) {
-        val line = segment.lines.getOrNull(index) ?: run {
+        val line = segment.dialogue.getOrNull(index) ?: run {
             _state.value = PreviewPlaybackState.Completed
             return
         }

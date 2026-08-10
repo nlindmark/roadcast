@@ -27,21 +27,35 @@ import se.roadcast.core.model.PreviewPlaybackState
 @Composable
 fun PlayerScreen(
     state: PlayerUiState,
+    onToggleJourney: () -> Unit,
     onPlayPause: () -> Unit,
     onReplay: () -> Unit,
+    onSkip: () -> Unit,
     onOpenDebug: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         when (state) {
             PlayerUiState.Loading -> CircularProgressIndicator()
-            is PlayerUiState.Empty -> MessageCard("The road is quiet", state.message)
+            is PlayerUiState.Empty -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                MessageCard("The road is quiet", state.message)
+                Button(onClick = onToggleJourney) {
+                    Text(if (state.simulationRunning) "Pause journey" else "Start journey")
+                }
+            }
             is PlayerUiState.Error -> MessageCard("Something interrupted the journey", state.message)
             is PlayerUiState.Success -> Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("UP NEXT", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    if (state.autoPlayEnabled) "NOW PLAYING" else "UP NEXT",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Spacer(Modifier.height(16.dp))
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -50,7 +64,13 @@ fun PlayerScreen(
                 ) {
                     Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(state.selected.name, style = MaterialTheme.typography.headlineMedium)
-                        Text(state.selected.shortDescription, style = MaterialTheme.typography.bodyLarge)
+                        state.segment?.let {
+                            Text(it.title, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "About ${it.estimatedDurationSeconds}s · ${it.dialogue.size} lines",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } ?: Text(state.selected.shortDescription, style = MaterialTheme.typography.bodyLarge)
                         Text(
                             "${state.selected.category.name.lowercase().replaceFirstChar { it.uppercase() }} · " +
                                 "${state.alternatives} more ranked stories",
@@ -62,18 +82,25 @@ fun PlayerScreen(
                 PlaybackDetails(state.playback)
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = onToggleJourney) {
+                        Text(if (state.simulationRunning) "Pause journey" else "Start journey")
+                    }
                     Button(
                         onClick = onPlayPause,
                         enabled = state.playback !is PreviewPlaybackState.Initializing,
                     ) {
                         Text(playbackAction(state.playback))
                     }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
                         onClick = onReplay,
                         enabled = state.segment != null || state.playback !is PreviewPlaybackState.Initializing,
                     ) {
                         Text("Replay")
                     }
+                    OutlinedButton(onClick = onSkip) { Text("Skip place") }
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = onOpenDebug) { Text("Why this place?") }
@@ -86,7 +113,7 @@ fun PlayerScreen(
 private fun PlaybackDetails(playback: PreviewPlaybackState) {
     when (playback) {
         PreviewPlaybackState.Idle -> Text(
-            "Ready for a two-host preview",
+            "Start the journey to autoplay the next story",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         PreviewPlaybackState.Initializing -> Row(
@@ -106,7 +133,7 @@ private fun PlaybackDetails(playback: PreviewPlaybackState) {
             text = playback.line.text,
             status = "Paused",
         )
-        PreviewPlaybackState.Completed -> Text("Preview finished")
+        PreviewPlaybackState.Completed -> Text("Story finished · advancing when ready")
         is PreviewPlaybackState.Error -> Text(
             playback.message,
             color = MaterialTheme.colorScheme.error,

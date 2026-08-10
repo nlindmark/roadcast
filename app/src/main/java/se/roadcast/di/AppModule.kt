@@ -6,6 +6,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import se.roadcast.core.ai.DialogueGenerator
+import se.roadcast.core.ai.DialogueValidator
 import se.roadcast.core.ai.UserSpeechRecognizer
 import se.roadcast.core.audio.AndroidTtsPreviewPlayer
 import se.roadcast.core.audio.PodcastOrchestrator
@@ -49,4 +50,8 @@ object RankingModule {
     @Provides
     @Singleton
     fun candidateRanker(): CandidateRanker = CandidateRanker()
+
+    @Provides
+    @Singleton
+    fun dialogueValidator(): DialogueValidator = DialogueValidator()
 }
