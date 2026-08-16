@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Roadcast</string>
+    <string name="playback_notification_channel_name">Playback</string>
+    <string name="playback_notification_channel_description">Controls for the travel podcast while driving</string>
+    <string name="playback_host_a">Alex</string>
+    <string name="playback_host_b">Sam</string>
+</resources>

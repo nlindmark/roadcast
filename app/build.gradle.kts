@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
     implementation(libs.play.services.location)
     implementation(libs.okhttp)
     implementation(libs.room.runtime)

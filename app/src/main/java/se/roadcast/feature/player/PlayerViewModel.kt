@@ -75,6 +75,9 @@ class PlayerViewModel @Inject constructor(
     private val _permissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val permissionRequests = _permissionRequests.asSharedFlow()
 
+    private val _notificationPermissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val notificationPermissionRequests = _notificationPermissionRequests.asSharedFlow()
+
     private var startAfterPermission = false
     private var autoPlayEnabled = true
 
@@ -224,6 +227,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun beginJourney() {
+        _notificationPermissionRequests.tryEmit(Unit)
         locationSource.start()
         val current = _uiState.value as? PlayerUiState.Success ?: return
         if (autoPlayEnabled && current.segment == null) {
@@ -260,11 +264,20 @@ class PlayerViewModel @Inject constructor(
         if (current.ask != null) return
         when (current.playback) {
             is PreviewPlaybackState.Playing -> previewPlayer.pause()
-            is PreviewPlaybackState.Paused -> previewPlayer.resume()
+            is PreviewPlaybackState.Paused -> {
+                _notificationPermissionRequests.tryEmit(Unit)
+                previewPlayer.resume()
+            }
             is PreviewPlaybackState.Answering -> Unit
-            PreviewPlaybackState.Completed -> previewPlayer.replay()
+            PreviewPlaybackState.Completed -> {
+                _notificationPermissionRequests.tryEmit(Unit)
+                previewPlayer.replay()
+            }
             PreviewPlaybackState.Initializing -> Unit
-            PreviewPlaybackState.Idle, is PreviewPlaybackState.Error -> prepareAndPlay(current)
+            PreviewPlaybackState.Idle, is PreviewPlaybackState.Error -> {
+                _notificationPermissionRequests.tryEmit(Unit)
+                prepareAndPlay(current)
+            }
         }
     }
 
@@ -469,7 +482,7 @@ class PlayerViewModel @Inject constructor(
     override fun onCleared() {
         prepareJob?.cancel()
         askJob?.cancel()
-        previewPlayer.stop()
+        // Keep ExoPlayer + MediaSessionService alive so playback continues in background.
         super.onCleared()
     }
 }

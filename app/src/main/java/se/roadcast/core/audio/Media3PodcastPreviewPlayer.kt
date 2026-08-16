@@ -3,7 +3,10 @@ package se.roadcast.core.audio
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import se.roadcast.R
 import se.roadcast.core.model.GeneratedAudioLine
 import se.roadcast.core.model.HostId
 import se.roadcast.core.model.PodcastSegment
@@ -26,12 +30,22 @@ import javax.inject.Singleton
 
 @Singleton
 class Media3PodcastPreviewPlayer @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     private val speechGenerator: SpeechGenerator,
+    private val playbackServiceController: PlaybackServiceController,
 ) : PodcastPreviewPlayer {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val prepareMutex = Mutex()
-    private val player = ExoPlayer.Builder(context).build()
+    val player: ExoPlayer = ExoPlayer.Builder(context)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
+                .build(),
+            /* handleAudioFocus = */ true,
+        )
+        .setHandleAudioBecomingNoisy(true)
+        .build()
     private val _state = MutableStateFlow<PreviewPlaybackState>(PreviewPlaybackState.Idle)
     override val state: StateFlow<PreviewPlaybackState> = _state.asStateFlow()
 
@@ -53,6 +67,9 @@ class Media3PodcastPreviewPlayer @Inject constructor(
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) {
+                        playbackServiceController.ensureStarted()
+                    }
                     if (mode != Mode.SEGMENT) return
                     if (isPlaying) {
                         publishSegmentState(playing = true)
@@ -98,7 +115,11 @@ class Media3PodcastPreviewPlayer @Inject constructor(
             withContext(Dispatchers.Main) {
                 player.stop()
                 player.clearMediaItems()
-                player.setMediaItems(synthesized.map { it.toMediaItem() })
+                player.setMediaItems(
+                    synthesized.mapIndexed { index, audio ->
+                        audio.toMediaItem(segment, index)
+                    },
+                )
                 player.prepare()
                 player.seekTo(0, 0L)
                 player.play()
@@ -129,9 +150,14 @@ class Media3PodcastPreviewPlayer @Inject constructor(
 
     override fun replay() {
         if (audioLines.isEmpty()) return
+        val segment = currentSegment ?: return
         mode = Mode.SEGMENT
         runOnMainBlocking {
-            player.setMediaItems(audioLines.map { it.toMediaItem() })
+            player.setMediaItems(
+                audioLines.mapIndexed { index, audio ->
+                    audio.toMediaItem(segment, index)
+                },
+            )
             player.prepare()
             player.seekTo(0, 0L)
             player.play()
@@ -150,6 +176,7 @@ class Media3PodcastPreviewPlayer @Inject constructor(
         lineIndex = 0
         resumeAfterAnswerIndex = 0
         _state.value = PreviewPlaybackState.Idle
+        playbackServiceController.stop()
     }
 
     override fun pauseForAsk(): Int {
@@ -186,6 +213,15 @@ class Media3PodcastPreviewPlayer @Inject constructor(
                 MediaItem.Builder()
                     .setUri(speech.uri)
                     .setMediaId("answer:${segment.id}:${answerText.hashCode()}")
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(segment.title)
+                            .setArtist(hostLabel(speaker))
+                            .setSubtitle(answerText.take(120))
+                            .setAlbumTitle("Roadcast")
+                            .setIsPlayable(true)
+                            .build(),
+                    )
                     .build(),
             )
             player.prepare()
@@ -207,7 +243,11 @@ class Media3PodcastPreviewPlayer @Inject constructor(
                     return
                 }
                 mainHandler.post {
-                    player.setMediaItems(audioLines.map { it.toMediaItem() })
+                    player.setMediaItems(
+                        audioLines.mapIndexed { index, audio ->
+                            audio.toMediaItem(segment, index)
+                        },
+                    )
                     player.prepare()
                     player.seekTo(resumeAfterAnswerIndex, 0L)
                     player.play()
@@ -234,11 +274,31 @@ class Media3PodcastPreviewPlayer @Inject constructor(
         }
     }
 
-    private fun GeneratedAudioLine.toMediaItem(): MediaItem =
-        MediaItem.Builder()
+    private fun GeneratedAudioLine.toMediaItem(
+        segment: PodcastSegment,
+        index: Int,
+    ): MediaItem {
+        val line = segment.dialogue.getOrNull(index)
+        return MediaItem.Builder()
             .setUri(speech.uri)
             .setMediaId(dialogueLineId)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(segment.title)
+                    .setArtist(line?.speaker?.let(::hostLabel) ?: "Roadcast")
+                    .setSubtitle(line?.text?.take(120))
+                    .setAlbumTitle("Roadcast")
+                    .setTrackNumber(index + 1)
+                    .setIsPlayable(true)
+                    .build(),
+            )
             .build()
+    }
+
+    private fun hostLabel(host: HostId): String = when (host) {
+        HostId.HOST_A -> context.getString(R.string.playback_host_a)
+        HostId.HOST_B -> context.getString(R.string.playback_host_b)
+    }
 
     private fun runOnMainBlocking(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {

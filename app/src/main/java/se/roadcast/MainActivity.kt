@@ -1,6 +1,7 @@
 package se.roadcast
 
 import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import se.roadcast.feature.debug.DebugScreen
 import se.roadcast.feature.debug.DebugViewModel
@@ -100,6 +102,7 @@ private fun RoadcastApp() {
                         requests = viewModel.permissionRequests,
                         onResult = viewModel::onPermissionResult,
                     )
+                    NotificationPermissionEffect(requests = viewModel.notificationPermissionRequests)
                     PlayerScreen(
                         state = state,
                         onToggleJourney = viewModel::toggleJourney,
@@ -158,7 +161,7 @@ private fun RoadcastApp() {
 
 @Composable
 private fun LocationPermissionEffect(
-    requests: kotlinx.coroutines.flow.SharedFlow<Unit>,
+    requests: SharedFlow<Unit>,
     onResult: (Boolean) -> Unit,
 ) {
     val launcher = rememberLauncherForActivityResult(
@@ -176,6 +179,19 @@ private fun LocationPermissionEffect(
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                 ),
             )
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionEffect(requests: SharedFlow<Unit>) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* Playback continues even if denied; notification may be hidden. */ }
+    LaunchedEffect(requests) {
+        requests.collectLatest {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }
