@@ -38,6 +38,16 @@ fun DebugScreen(
             is DebugUiState.Empty -> Text(state.message)
             is DebugUiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
             is DebugUiState.Success -> {
+                Text(
+                    "Location source: ${state.modeLabel}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (!state.simulationControlsEnabled) {
+                    Text(
+                        "Jump and speed controls apply only in simulation mode.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Route telemetry", style = MaterialTheme.typography.titleMedium)
@@ -57,13 +67,17 @@ fun DebugScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onToggle) { Text(if (state.running) "Pause" else "Start") }
                     OutlinedButton(onClick = onReset) { Text("Reset") }
-                    OutlinedButton(onClick = onJump) { Text("Next place") }
+                    OutlinedButton(
+                        onClick = onJump,
+                        enabled = state.simulationControlsEnabled,
+                    ) { Text("Next place") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(0.5, 1.0, 2.0, 4.0).forEach { speed ->
                         FilterChip(
                             selected = state.speedMultiplier == speed,
                             onClick = { onSpeed(speed) },
+                            enabled = state.simulationControlsEnabled,
                             label = { Text("${speed}×") },
                         )
                     }

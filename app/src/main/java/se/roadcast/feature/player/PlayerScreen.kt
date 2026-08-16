@@ -71,6 +71,9 @@ fun PlayerScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     MessageCard("The road is quiet", state.message)
+                    state.locationMessage?.let {
+                        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Button(onClick = onToggleJourney) {
                         Text(if (state.simulationRunning) "Pause journey" else "Start journey")
                     }
@@ -128,6 +131,7 @@ private fun SuccessPlayer(
             upcomingCount = state.alternatives,
             canTellMeMore = state.canTellMeMore,
             followUpCount = state.followUpCount,
+            usingGps = state.usingGps,
         )
         Spacer(Modifier.height(14.dp))
         PlaceHero(place = state.selected)
@@ -235,6 +239,7 @@ private fun StatusStrip(
     upcomingCount: Int,
     canTellMeMore: Boolean,
     followUpCount: Int,
+    usingGps: Boolean,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -242,7 +247,7 @@ private fun StatusStrip(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            statusLabel(autoPlayEnabled, playback, canTellMeMore, followUpCount),
+            statusLabel(autoPlayEnabled, playback, canTellMeMore, followUpCount, usingGps),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )
@@ -476,8 +481,10 @@ private fun statusLabel(
     playback: PreviewPlaybackState,
     canTellMeMore: Boolean,
     followUpCount: Int,
-): String =
-    when (playback) {
+    usingGps: Boolean,
+): String {
+    val source = if (usingGps) "GPS · " else ""
+    return source + when (playback) {
         is PreviewPlaybackState.Playing -> if (followUpCount > 0) "DEEPER PASS" else "NOW PLAYING"
         is PreviewPlaybackState.Paused -> "PAUSED"
         is PreviewPlaybackState.Answering -> "ASK ANSWER"
@@ -486,6 +493,7 @@ private fun statusLabel(
         is PreviewPlaybackState.Error -> "NEEDS ATTENTION"
         PreviewPlaybackState.Idle -> if (autoPlayEnabled) "UP NEXT" else "READY"
     }
+}
 
 private fun playbackProgress(playback: PreviewPlaybackState, segment: PodcastSegment?): Float {
     val total = segment?.dialogue?.size?.takeIf { it > 0 } ?: return 0f

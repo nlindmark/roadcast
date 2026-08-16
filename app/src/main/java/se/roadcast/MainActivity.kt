@@ -1,8 +1,11 @@
 package se.roadcast
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -11,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import se.roadcast.feature.debug.DebugScreen
 import se.roadcast.feature.debug.DebugViewModel
 import se.roadcast.feature.history.HistoryScreen
@@ -88,6 +93,10 @@ private fun RoadcastApp() {
                 composable(Destination.Player.route) {
                     val viewModel: PlayerViewModel = hiltViewModel()
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    LocationPermissionEffect(
+                        requests = viewModel.permissionRequests,
+                        onResult = viewModel::onPermissionResult,
+                    )
                     PlayerScreen(
                         state = state,
                         onToggleJourney = viewModel::toggleJourney,
@@ -111,7 +120,15 @@ private fun RoadcastApp() {
                 composable(Destination.Settings.route) {
                     val viewModel: SettingsViewModel = hiltViewModel()
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
-                    SettingsScreen(state, viewModel::setAutoPlay)
+                    LocationPermissionEffect(
+                        requests = viewModel.permissionRequests,
+                        onResult = viewModel::onPermissionResult,
+                    )
+                    SettingsScreen(
+                        state = state,
+                        onAutoPlay = viewModel::setAutoPlay,
+                        onSimulationEnabled = viewModel::setSimulationEnabled,
+                    )
                 }
                 composable(Destination.Debug.route) {
                     val viewModel: DebugViewModel = hiltViewModel()
@@ -125,6 +142,30 @@ private fun RoadcastApp() {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LocationPermissionEffect(
+    requests: kotlinx.coroutines.flow.SharedFlow<Unit>,
+    onResult: (Boolean) -> Unit,
+) {
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        onResult(granted)
+    }
+    LaunchedEffect(requests) {
+        requests.collectLatest {
+            launcher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ),
+            )
         }
     }
 }

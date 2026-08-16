@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -13,6 +15,9 @@ import se.roadcast.core.ai.DialogueGenerator
 import se.roadcast.core.ai.SuggestedQuestions
 import se.roadcast.core.audio.PodcastPreviewPlayer
 import se.roadcast.core.database.HistoryStore
+import se.roadcast.core.location.LocationMode
+import se.roadcast.core.location.LocationModeController
+import se.roadcast.core.location.LocationPermissionStatus
 import se.roadcast.core.location.LocationSource
 import se.roadcast.core.model.AskOverlayState
 import se.roadcast.core.model.HostId
@@ -40,14 +45,22 @@ sealed interface PlayerUiState {
         val lastAnswer: String? = null,
         val followUpCount: Int = 0,
         val canTellMeMore: Boolean = false,
+        val usingGps: Boolean = false,
+        val locationMessage: String? = null,
     ) : PlayerUiState
-    data class Empty(val message: String, val simulationRunning: Boolean = false) : PlayerUiState
+    data class Empty(
+        val message: String,
+        val simulationRunning: Boolean = false,
+        val usingGps: Boolean = false,
+        val locationMessage: String? = null,
+    ) : PlayerUiState
     data class Error(val message: String) : PlayerUiState
 }
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val locationSource: LocationSource,
+    private val locationModeController: LocationModeController,
     private val historyStore: HistoryStore,
     private val discoveryRepository: RankedPlaceDiscoveryRepository,
     private val knowledgeRepository: PlaceKnowledgeRepository,
@@ -56,6 +69,11 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    private val _permissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val permissionRequests = _permissionRequests.asSharedFlow()
+
+    private var startAfterPermission = false
 
     private val preferences = PodcastPreferences(
         interests = mapOf(
@@ -82,16 +100,33 @@ class PlayerViewModel @Inject constructor(
                 locationSource.travelState,
                 historyStore.playedPlaceIds,
                 locationSource.isRunning,
-            ) { travel, played, running ->
-                Triple(travel, played, running)
-            }.collect { (travel, played, running) ->
-                runCatching { discoveryRepository.findRankedPlacesAhead(travel, preferences, played) }
+                locationModeController.mode,
+                locationModeController.permissionStatus,
+            ) { travel, played, running, mode, permission ->
+                TravelSnapshot(travel, played, running, mode, permission)
+            }.collect { snapshot ->
+                val usingGps = snapshot.mode == LocationMode.GPS
+                val locationMessage = locationMessage(snapshot.mode, snapshot.permission)
+                runCatching {
+                    discoveryRepository.findRankedPlacesAhead(
+                        snapshot.travel,
+                        preferences,
+                        snapshot.played,
+                    )
+                }
                     .onSuccess { ranked ->
                         val selected = ranked.firstOrNull()
                         if (selected == null) {
                             _uiState.value = PlayerUiState.Empty(
-                                message = "No eligible stories remain on this route.",
-                                simulationRunning = running,
+                                message = if (usingGps) {
+                                    "No eligible fixture stories near this GPS position. " +
+                                        "Try Gothenburg or switch back to simulation."
+                                } else {
+                                    "No eligible stories remain on this route."
+                                },
+                                simulationRunning = snapshot.running,
+                                usingGps = usingGps,
+                                locationMessage = locationMessage,
                             )
                             return@onSuccess
                         }
@@ -100,8 +135,10 @@ class PlayerViewModel @Inject constructor(
                             _uiState.value = current.copy(
                                 selected = selected.candidate,
                                 alternatives = ranked.size - 1,
-                                simulationRunning = running,
+                                simulationRunning = snapshot.running,
                                 autoPlayEnabled = preferences.autoplay,
+                                usingGps = usingGps,
+                                locationMessage = locationMessage,
                             )
                         } else {
                             previewPlayer.stop()
@@ -110,11 +147,13 @@ class PlayerViewModel @Inject constructor(
                             val next = PlayerUiState.Success(
                                 selected = selected.candidate,
                                 alternatives = ranked.size - 1,
-                                simulationRunning = running,
+                                simulationRunning = snapshot.running,
                                 autoPlayEnabled = preferences.autoplay,
+                                usingGps = usingGps,
+                                locationMessage = locationMessage,
                             )
                             _uiState.value = next
-                            if (preferences.autoplay && running) {
+                            if (preferences.autoplay && snapshot.running) {
                                 prepareAndPlay(next)
                             }
                         }
@@ -153,16 +192,60 @@ class PlayerViewModel @Inject constructor(
         if (locationSource.isRunning.value) {
             locationSource.pause()
             previewPlayer.pause()
+            return
+        }
+        locationModeController.refreshPermissionStatus()
+        if (locationModeController.mode.value == LocationMode.GPS &&
+            locationModeController.permissionStatus.value !is LocationPermissionStatus.Granted
+        ) {
+            startAfterPermission = true
+            _permissionRequests.tryEmit(Unit)
+            return
+        }
+        beginJourney()
+    }
+
+    fun onPermissionResult(granted: Boolean) {
+        locationModeController.onPermissionResult(granted)
+        if (granted && startAfterPermission) {
+            startAfterPermission = false
+            beginJourney()
         } else {
-            locationSource.start()
-            val current = _uiState.value as? PlayerUiState.Success ?: return
-            if (preferences.autoplay && current.segment == null) {
-                prepareAndPlay(current)
-            } else if (current.playback is PreviewPlaybackState.Paused) {
-                previewPlayer.resume()
-            }
+            startAfterPermission = false
         }
     }
+
+    private fun beginJourney() {
+        locationSource.start()
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        if (preferences.autoplay && current.segment == null) {
+            prepareAndPlay(current)
+        } else if (current.playback is PreviewPlaybackState.Paused) {
+            previewPlayer.resume()
+        }
+    }
+
+    private fun locationMessage(
+        mode: LocationMode,
+        permission: LocationPermissionStatus,
+    ): String? = when {
+        mode == LocationMode.GPS && permission is LocationPermissionStatus.Granted ->
+            "GPS mode"
+        mode == LocationMode.GPS && permission is LocationPermissionStatus.NeedsPermission ->
+            "Location permission needed for GPS mode"
+        mode == LocationMode.GPS && permission is LocationPermissionStatus.Denied ->
+            "Location permission denied"
+        permission is LocationPermissionStatus.Unavailable -> permission.message
+        else -> null
+    }
+
+    private data class TravelSnapshot(
+        val travel: se.roadcast.core.model.TravelState,
+        val played: Set<String>,
+        val running: Boolean,
+        val mode: LocationMode,
+        val permission: LocationPermissionStatus,
+    )
 
     fun playOrPause() {
         val current = _uiState.value as? PlayerUiState.Success ?: return

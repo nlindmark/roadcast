@@ -15,6 +15,8 @@ import se.roadcast.core.audio.PodcastPreviewPlayer
 import se.roadcast.core.audio.SpeechGenerator
 import se.roadcast.core.database.HistoryStore
 import se.roadcast.core.location.CandidateRanker
+import se.roadcast.core.location.DelegatingLocationSource
+import se.roadcast.core.location.LocationModeController
 import se.roadcast.core.location.LocationSource
 import se.roadcast.core.network.PlaceDiscoveryRepository
 import se.roadcast.core.network.PlaceKnowledgeRepository
@@ -24,14 +26,14 @@ import se.roadcast.simulation.FakePlaceRepository
 import se.roadcast.simulation.FakePodcastOrchestrator
 import se.roadcast.simulation.FakeSpeechRecognizer
 import se.roadcast.simulation.InMemoryHistoryStore
-import se.roadcast.simulation.SimulationLocationSource
 import se.roadcast.simulation.SimulationPipeline
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class SimulationBindings {
-    @Binds abstract fun location(implementation: SimulationLocationSource): LocationSource
+    @Binds abstract fun location(implementation: DelegatingLocationSource): LocationSource
+    @Binds abstract fun locationMode(implementation: DelegatingLocationSource): LocationModeController
     @Binds abstract fun discovery(implementation: FakePlaceRepository): PlaceDiscoveryRepository
     @Binds abstract fun rankedDiscovery(implementation: FakePlaceRepository): RankedPlaceDiscoveryRepository
     @Binds abstract fun knowledge(implementation: FakePlaceRepository): PlaceKnowledgeRepository
