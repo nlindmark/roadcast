@@ -15,6 +15,7 @@ import se.roadcast.core.ai.DialogueGenerator
 import se.roadcast.core.ai.SuggestedQuestions
 import se.roadcast.core.audio.PodcastPreviewPlayer
 import se.roadcast.core.database.HistoryStore
+import se.roadcast.core.database.SettingsRepository
 import se.roadcast.core.location.LocationMode
 import se.roadcast.core.location.LocationModeController
 import se.roadcast.core.location.LocationPermissionStatus
@@ -62,6 +63,7 @@ class PlayerViewModel @Inject constructor(
     private val locationSource: LocationSource,
     private val locationModeController: LocationModeController,
     private val historyStore: HistoryStore,
+    private val settingsStore: SettingsRepository,
     private val discoveryRepository: RankedPlaceDiscoveryRepository,
     private val knowledgeRepository: PlaceKnowledgeRepository,
     private val dialogueGenerator: DialogueGenerator,
@@ -74,6 +76,7 @@ class PlayerViewModel @Inject constructor(
     val permissionRequests = _permissionRequests.asSharedFlow()
 
     private var startAfterPermission = false
+    private var autoPlayEnabled = true
 
     private val preferences = PodcastPreferences(
         interests = mapOf(
@@ -96,6 +99,11 @@ class PlayerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            settingsStore.settings.collect { settings ->
+                autoPlayEnabled = settings.autoPlay
+            }
+        }
+        viewModelScope.launch {
             combine(
                 locationSource.travelState,
                 historyStore.playedPlaceIds,
@@ -110,7 +118,7 @@ class PlayerViewModel @Inject constructor(
                 runCatching {
                     discoveryRepository.findRankedPlacesAhead(
                         snapshot.travel,
-                        preferences,
+                        preferences.copy(autoplay = autoPlayEnabled),
                         snapshot.played,
                     )
                 }
@@ -136,7 +144,7 @@ class PlayerViewModel @Inject constructor(
                                 selected = selected.candidate,
                                 alternatives = ranked.size - 1,
                                 simulationRunning = snapshot.running,
-                                autoPlayEnabled = preferences.autoplay,
+                                autoPlayEnabled = autoPlayEnabled,
                                 usingGps = usingGps,
                                 locationMessage = locationMessage,
                             )
@@ -148,12 +156,12 @@ class PlayerViewModel @Inject constructor(
                                 selected = selected.candidate,
                                 alternatives = ranked.size - 1,
                                 simulationRunning = snapshot.running,
-                                autoPlayEnabled = preferences.autoplay,
+                                autoPlayEnabled = autoPlayEnabled,
                                 usingGps = usingGps,
                                 locationMessage = locationMessage,
                             )
                             _uiState.value = next
-                            if (preferences.autoplay && snapshot.running) {
+                            if (autoPlayEnabled && snapshot.running) {
                                 prepareAndPlay(next)
                             }
                         }
@@ -218,7 +226,7 @@ class PlayerViewModel @Inject constructor(
     private fun beginJourney() {
         locationSource.start()
         val current = _uiState.value as? PlayerUiState.Success ?: return
-        if (preferences.autoplay && current.segment == null) {
+        if (autoPlayEnabled && current.segment == null) {
             prepareAndPlay(current)
         } else if (current.playback is PreviewPlaybackState.Paused) {
             previewPlayer.resume()

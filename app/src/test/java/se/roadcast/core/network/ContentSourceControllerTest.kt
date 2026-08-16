@@ -4,12 +4,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import se.roadcast.core.database.InMemorySettingsRepository
 import se.roadcast.core.network.api.ApiEndpointConfig
 
 class ContentSourceControllerTest {
     @Test
     fun `remote remains disabled without base url`() {
-        val content = DefaultContentSourceController(ApiEndpointConfig(""))
+        val content = DefaultContentSourceController(
+            endpointConfig = ApiEndpointConfig(""),
+            settingsStore = InMemorySettingsRepository(),
+        )
         content.setSource(ContentSource.REMOTE)
         assertEquals(ContentSource.SIMULATION, content.source.value)
         assertFalse(content.shouldUseRemote())
@@ -18,7 +22,10 @@ class ContentSourceControllerTest {
 
     @Test
     fun `remote can be enabled when base url is configured`() {
-        val content = DefaultContentSourceController(ApiEndpointConfig("https://api.example"))
+        val content = DefaultContentSourceController(
+            endpointConfig = ApiEndpointConfig("https://api.example"),
+            settingsStore = InMemorySettingsRepository(),
+        )
         content.setSource(ContentSource.REMOTE)
         assertEquals(ContentSource.REMOTE, content.source.value)
         assertTrue(content.shouldUseRemote())

@@ -2,15 +2,18 @@ package se.roadcast.core.location
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import se.roadcast.core.database.SettingsRepository
 import se.roadcast.core.model.TravelState
 import se.roadcast.simulation.SimulationLocationSource
 import javax.inject.Inject
@@ -21,6 +24,7 @@ import javax.inject.Singleton
 class DelegatingLocationSource @Inject constructor(
     private val simulation: SimulationLocationSource,
     private val gps: FusedGpsLocationSource,
+    private val settingsStore: SettingsRepository,
 ) : LocationSource, LocationModeController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _mode = MutableStateFlow(LocationMode.SIMULATION)
@@ -61,11 +65,27 @@ class DelegatingLocationSource @Inject constructor(
         }
         .stateIn(scope, SharingStarted.Eagerly, 1.0)
 
+    init {
+        scope.launch {
+            val saved = settingsStore.settings.first()
+            if (saved.locationMode != _mode.value) {
+                applyMode(saved.locationMode, persist = false)
+            }
+        }
+    }
+
     override fun setMode(mode: LocationMode) {
+        applyMode(mode, persist = true)
+    }
+
+    private fun applyMode(mode: LocationMode, persist: Boolean) {
         if (_mode.value == mode) return
         active().pause()
         _mode.value = mode
         refreshPermissionStatus()
+        if (persist) {
+            scope.launch { settingsStore.setLocationMode(mode) }
+        }
     }
 
     override fun refreshPermissionStatus() {
@@ -74,9 +94,6 @@ class DelegatingLocationSource @Inject constructor(
 
     override fun onPermissionResult(granted: Boolean) {
         gps.onPermissionResult(granted)
-        if (granted && _mode.value == LocationMode.GPS && !isRunning.value) {
-            // Leave start to the user / player journey control.
-        }
     }
 
     override fun start() = active().start()

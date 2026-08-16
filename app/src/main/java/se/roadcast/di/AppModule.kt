@@ -22,6 +22,8 @@ import se.roadcast.core.database.HistoryDao
 import se.roadcast.core.database.HistoryStore
 import se.roadcast.core.database.RoadcastDatabase
 import se.roadcast.core.database.RoomHistoryStore
+import se.roadcast.core.database.SettingsRepository
+import se.roadcast.core.database.SettingsStore
 import se.roadcast.core.location.CandidateRanker
 import se.roadcast.core.location.DelegatingLocationSource
 import se.roadcast.core.location.LocationModeController
@@ -53,6 +55,7 @@ abstract class SimulationBindings {
     @Binds abstract fun rankedDiscovery(implementation: RoutingPlaceRepository): RankedPlaceDiscoveryRepository
     @Binds abstract fun knowledge(implementation: RoutingPlaceRepository): PlaceKnowledgeRepository
     @Binds abstract fun pipeline(implementation: FakePlaceRepository): SimulationPipeline
+    @Binds abstract fun settings(implementation: SettingsStore): SettingsRepository
     @Binds abstract fun history(implementation: RoomHistoryStore): HistoryStore
     @Binds abstract fun dialogue(implementation: RoutingDialogueGenerator): DialogueGenerator
     @Binds abstract fun speech(implementation: RoutingSpeechGenerator): SpeechGenerator

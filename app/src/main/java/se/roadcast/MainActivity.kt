@@ -115,7 +115,7 @@ private fun RoadcastApp() {
                 composable(Destination.History.route) {
                     val viewModel: HistoryViewModel = hiltViewModel()
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
-                    HistoryScreen(state)
+                    HistoryScreen(state = state, onClear = viewModel::clearHistory)
                 }
                 composable(Destination.Settings.route) {
                     val viewModel: SettingsViewModel = hiltViewModel()

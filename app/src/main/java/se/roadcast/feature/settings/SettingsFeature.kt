@@ -18,12 +18,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import se.roadcast.core.database.SettingsRepository
 import se.roadcast.core.location.LocationMode
 import se.roadcast.core.location.LocationModeController
 import se.roadcast.core.location.LocationPermissionStatus
@@ -49,8 +50,8 @@ sealed interface SettingsUiState {
 class SettingsViewModel @Inject constructor(
     private val locationModeController: LocationModeController,
     private val contentSourceController: ContentSourceController,
+    private val settingsStore: SettingsRepository,
 ) : ViewModel() {
-    private val autoPlay = MutableStateFlow(true)
     private val _permissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val permissionRequests = _permissionRequests.asSharedFlow()
 
@@ -59,13 +60,13 @@ class SettingsViewModel @Inject constructor(
         locationModeController.permissionStatus,
         contentSourceController.source,
         contentSourceController.lastError,
-        autoPlay,
-    ) { mode, permission, contentSource, lastError, autoPlayEnabled ->
+        settingsStore.settings,
+    ) { mode, permission, contentSource, lastError, settings ->
         SettingsUiState.Success(
             simulationEnabled = mode == LocationMode.SIMULATION,
             remoteEnabled = contentSource == ContentSource.REMOTE,
             remoteConfigured = contentSourceController.remoteConfigured,
-            autoPlay = autoPlayEnabled,
+            autoPlay = settings.autoPlay,
             permissionStatus = permission,
             statusMessage = statusMessage(mode, permission, contentSource, lastError),
         )
@@ -76,7 +77,7 @@ class SettingsViewModel @Inject constructor(
     )
 
     fun setAutoPlay(enabled: Boolean) {
-        autoPlay.value = enabled
+        viewModelScope.launch { settingsStore.setAutoPlay(enabled) }
     }
 
     fun setSimulationEnabled(enabled: Boolean) {
