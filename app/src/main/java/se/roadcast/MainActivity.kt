@@ -94,6 +94,11 @@ private fun RoadcastApp() {
                         onPlayPause = viewModel::playOrPause,
                         onReplay = viewModel::replay,
                         onSkip = viewModel::skip,
+                        onAsk = viewModel::openAsk,
+                        onAskQuestionChange = viewModel::updateAskQuestion,
+                        onSuggestedQuestion = viewModel::useSuggestedQuestion,
+                        onSubmitAsk = viewModel::submitAsk,
+                        onCancelAsk = viewModel::cancelAsk,
                         onOpenDebug = { navController.navigate(Destination.Debug.route) },
                     )
                 }

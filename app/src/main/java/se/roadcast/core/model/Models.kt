@@ -127,8 +127,32 @@ sealed interface PreviewPlaybackState {
         val line: DialogueLine,
     ) : PreviewPlaybackState
 
+    @Serializable
+    data class Answering(
+        val question: String,
+        val answerText: String,
+        val speaker: HostId,
+        val resumeFromLineIndex: Int,
+    ) : PreviewPlaybackState
+
     @Serializable data object Completed : PreviewPlaybackState
     @Serializable data class Error(val message: String) : PreviewPlaybackState
+}
+
+@Serializable
+sealed interface AskOverlayState {
+    @Serializable
+    data class Editing(
+        val question: String = "",
+        val suggestedQuestions: List<String> = emptyList(),
+        val errorMessage: String? = null,
+    ) : AskOverlayState
+
+    @Serializable
+    data class Submitting(
+        val question: String,
+        val suggestedQuestions: List<String> = emptyList(),
+    ) : AskOverlayState
 }
 
 @Serializable

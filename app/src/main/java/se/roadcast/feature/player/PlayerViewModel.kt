@@ -10,9 +10,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import se.roadcast.core.ai.DialogueGenerator
+import se.roadcast.core.ai.SuggestedQuestions
 import se.roadcast.core.audio.PodcastPreviewPlayer
 import se.roadcast.core.database.HistoryStore
 import se.roadcast.core.location.LocationSource
+import se.roadcast.core.model.AskOverlayState
+import se.roadcast.core.model.HostId
 import se.roadcast.core.model.PlaceCandidate
 import se.roadcast.core.model.PlaceCategory
 import se.roadcast.core.model.PodcastPreferences
@@ -32,6 +35,8 @@ sealed interface PlayerUiState {
         val playback: PreviewPlaybackState = PreviewPlaybackState.Idle,
         val simulationRunning: Boolean = false,
         val autoPlayEnabled: Boolean = true,
+        val ask: AskOverlayState? = null,
+        val lastAnswer: String? = null,
     ) : PlayerUiState
     data class Empty(val message: String, val simulationRunning: Boolean = false) : PlayerUiState
     data class Error(val message: String) : PlayerUiState
@@ -58,9 +63,11 @@ class PlayerViewModel @Inject constructor(
         autoplay = true,
     )
     private var prepareJob: Job? = null
+    private var askJob: Job? = null
     private var preparingPlaceId: String? = null
     private var recentPlaceIds = emptyList<String>()
     private var recentSummaries = emptyList<String>()
+    private var resumeAfterAskIndex = 0
 
     init {
         viewModelScope.launch {
@@ -92,6 +99,7 @@ class PlayerViewModel @Inject constructor(
                         } else {
                             previewPlayer.stop()
                             preparingPlaceId = null
+                            askJob?.cancel()
                             val next = PlayerUiState.Success(
                                 selected = selected.candidate,
                                 alternatives = ranked.size - 1,
@@ -112,7 +120,21 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             previewPlayer.state.collect { playback ->
                 val current = _uiState.value as? PlayerUiState.Success ?: return@collect
-                _uiState.value = current.copy(playback = playback)
+                val askClosed = if (playback is PreviewPlaybackState.Playing ||
+                    playback is PreviewPlaybackState.Completed
+                ) {
+                    null
+                } else {
+                    current.ask
+                }
+                _uiState.value = current.copy(
+                    playback = playback,
+                    ask = askClosed,
+                    lastAnswer = when (playback) {
+                        is PreviewPlaybackState.Answering -> playback.answerText
+                        else -> current.lastAnswer
+                    },
+                )
                 if (playback is PreviewPlaybackState.Completed && current.segment != null) {
                     onSegmentCompleted(current)
                 }
@@ -137,9 +159,11 @@ class PlayerViewModel @Inject constructor(
 
     fun playOrPause() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
+        if (current.ask != null) return
         when (current.playback) {
             is PreviewPlaybackState.Playing -> previewPlayer.pause()
             is PreviewPlaybackState.Paused -> previewPlayer.resume()
+            is PreviewPlaybackState.Answering -> Unit
             PreviewPlaybackState.Completed -> previewPlayer.replay()
             PreviewPlaybackState.Initializing -> Unit
             PreviewPlaybackState.Idle, is PreviewPlaybackState.Error -> prepareAndPlay(current)
@@ -148,12 +172,14 @@ class PlayerViewModel @Inject constructor(
 
     fun replay() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
+        if (current.ask != null) return
         if (current.segment == null) prepareAndPlay(current) else previewPlayer.replay()
     }
 
     fun skip() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
         viewModelScope.launch {
+            askJob?.cancel()
             previewPlayer.stop()
             preparingPlaceId = null
             historyStore.markPlayed(current.selected.id)
@@ -162,12 +188,89 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun openAsk() {
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        if (current.segment == null) return
+        resumeAfterAskIndex = previewPlayer.pauseForAsk()
+        val suggestions = current.selected.knowledgePackage
+            ?.let(SuggestedQuestions::from)
+            .orEmpty()
+        _uiState.value = current.copy(
+            ask = AskOverlayState.Editing(suggestedQuestions = suggestions),
+            playback = previewPlayer.state.value,
+        )
+    }
+
+    fun updateAskQuestion(question: String) {
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        val ask = current.ask as? AskOverlayState.Editing ?: return
+        _uiState.value = current.copy(ask = ask.copy(question = question, errorMessage = null))
+    }
+
+    fun useSuggestedQuestion(question: String) {
+        updateAskQuestion(question)
+    }
+
+    fun cancelAsk() {
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        askJob?.cancel()
+        _uiState.value = current.copy(ask = null)
+        if (current.playback is PreviewPlaybackState.Paused) {
+            previewPlayer.resume()
+        }
+    }
+
+    fun submitAsk() {
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        val ask = current.ask as? AskOverlayState.Editing ?: return
+        val question = ask.question.trim()
+        if (question.isEmpty()) {
+            _uiState.value = current.copy(ask = ask.copy(errorMessage = "Type a question first."))
+            return
+        }
+        askJob?.cancel()
+        askJob = viewModelScope.launch {
+            _uiState.value = current.copy(
+                ask = AskOverlayState.Submitting(question, ask.suggestedQuestions),
+            )
+            runCatching {
+                val knowledge = knowledgeRepository.buildKnowledgePackage(current.selected)
+                val answer = dialogueGenerator.answerQuestion(
+                    question = question,
+                    currentKnowledge = knowledge,
+                    recentDialogue = current.segment?.dialogue.orEmpty(),
+                    preferences = preferences,
+                )
+                previewPlayer.playAnswerThenResume(
+                    question = question,
+                    answerText = answer.text,
+                    speaker = HostId.HOST_B,
+                    resumeFromLineIndex = resumeAfterAskIndex,
+                )
+                val latest = _uiState.value as? PlayerUiState.Success ?: return@launch
+                _uiState.value = latest.copy(
+                    ask = null,
+                    lastAnswer = answer.text,
+                )
+            }.onFailure { error ->
+                val latest = _uiState.value as? PlayerUiState.Success ?: return@launch
+                _uiState.value = latest.copy(
+                    ask = AskOverlayState.Editing(
+                        question = question,
+                        suggestedQuestions = ask.suggestedQuestions,
+                        errorMessage = error.message ?: "Could not answer that question.",
+                    ),
+                )
+            }
+        }
+    }
+
     private fun prepareAndPlay(current: PlayerUiState.Success) {
         if (preparingPlaceId == current.selected.id) return
         prepareJob?.cancel()
         prepareJob = viewModelScope.launch {
             preparingPlaceId = current.selected.id
-            _uiState.value = current.copy(playback = PreviewPlaybackState.Initializing)
+            _uiState.value = current.copy(playback = PreviewPlaybackState.Initializing, ask = null)
             runCatching {
                 val knowledge = knowledgeRepository.buildKnowledgePackage(current.selected)
                 val context = PreviousPodcastContext(
@@ -204,6 +307,7 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         prepareJob?.cancel()
+        askJob?.cancel()
         previewPlayer.stop()
         super.onCleared()
     }

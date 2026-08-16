@@ -26,7 +26,16 @@ class AndroidTtsPreviewPlayer @Inject constructor(
     override val state: StateFlow<PreviewPlaybackState> = _state.asStateFlow()
 
     private var currentSegment: PodcastSegment? = null
-    private var currentLineIndex = 0
+    private var lineIndex = 0
+    private var resumeAfterAnswerIndex = 0
+    private var mode = Mode.SEGMENT
+    private var pendingAnswerQuestion: String? = null
+    private var pendingAnswerText: String? = null
+    private var pendingAnswerSpeaker: HostId = HostId.HOST_B
+
+    override val currentLineIndex: Int
+        get() = synchronized(lock) { lineIndex }
+
     private val engine = TextToSpeech(context) { status ->
         ready.complete(status == TextToSpeech.SUCCESS)
     }
@@ -38,12 +47,31 @@ class AndroidTtsPreviewPlayer @Inject constructor(
 
                 override fun onDone(utteranceId: String) {
                     synchronized(lock) {
-                        val segment = currentSegment ?: return
-                        val nextIndex = currentLineIndex + 1
-                        if (nextIndex > segment.dialogue.lastIndex) {
-                            _state.value = PreviewPlaybackState.Completed
-                        } else {
-                            speakLine(segment, nextIndex)
+                        when (mode) {
+                            Mode.ANSWER -> {
+                                mode = Mode.SEGMENT
+                                pendingAnswerQuestion = null
+                                pendingAnswerText = null
+                                val segment = currentSegment
+                                if (segment == null) {
+                                    _state.value = PreviewPlaybackState.Idle
+                                    return
+                                }
+                                if (resumeAfterAnswerIndex > segment.dialogue.lastIndex) {
+                                    _state.value = PreviewPlaybackState.Completed
+                                } else {
+                                    speakLine(segment, resumeAfterAnswerIndex)
+                                }
+                            }
+                            Mode.SEGMENT -> {
+                                val segment = currentSegment ?: return
+                                val nextIndex = lineIndex + 1
+                                if (nextIndex > segment.dialogue.lastIndex) {
+                                    _state.value = PreviewPlaybackState.Completed
+                                } else {
+                                    speakLine(segment, nextIndex)
+                                }
+                            }
                         }
                     }
                 }
@@ -69,6 +97,7 @@ class AndroidTtsPreviewPlayer @Inject constructor(
             return
         }
         synchronized(lock) {
+            mode = Mode.SEGMENT
             currentSegment = segment
             engine.stop()
             speakLine(segment, 0)
@@ -77,10 +106,11 @@ class AndroidTtsPreviewPlayer @Inject constructor(
 
     override fun pause() {
         synchronized(lock) {
+            if (mode == Mode.ANSWER) return
             val segment = currentSegment ?: return
-            val line = segment.dialogue.getOrNull(currentLineIndex) ?: return
+            val line = segment.dialogue.getOrNull(lineIndex) ?: return
             engine.stop()
-            _state.value = PreviewPlaybackState.Paused(currentLineIndex, line)
+            _state.value = PreviewPlaybackState.Paused(lineIndex, line)
         }
     }
 
@@ -88,7 +118,8 @@ class AndroidTtsPreviewPlayer @Inject constructor(
         synchronized(lock) {
             val segment = currentSegment ?: return
             if (_state.value is PreviewPlaybackState.Paused) {
-                speakLine(segment, currentLineIndex)
+                mode = Mode.SEGMENT
+                speakLine(segment, lineIndex)
             }
         }
     }
@@ -96,6 +127,7 @@ class AndroidTtsPreviewPlayer @Inject constructor(
     override fun replay() {
         synchronized(lock) {
             val segment = currentSegment ?: return
+            mode = Mode.SEGMENT
             engine.stop()
             speakLine(segment, 0)
         }
@@ -104,9 +136,61 @@ class AndroidTtsPreviewPlayer @Inject constructor(
     override fun stop() {
         synchronized(lock) {
             engine.stop()
+            mode = Mode.SEGMENT
             currentSegment = null
-            currentLineIndex = 0
+            lineIndex = 0
+            resumeAfterAnswerIndex = 0
+            pendingAnswerQuestion = null
+            pendingAnswerText = null
             _state.value = PreviewPlaybackState.Idle
+        }
+    }
+
+    override fun pauseForAsk(): Int = synchronized(lock) {
+        val segment = currentSegment ?: return 0
+        val resumeIndex = (lineIndex + 1).coerceAtMost(segment.dialogue.size)
+        engine.stop()
+        mode = Mode.SEGMENT
+        val line = segment.dialogue.getOrNull(lineIndex)
+        if (line != null) {
+            _state.value = PreviewPlaybackState.Paused(lineIndex, line)
+        }
+        resumeIndex
+    }
+
+    override suspend fun playAnswerThenResume(
+        question: String,
+        answerText: String,
+        speaker: HostId,
+        resumeFromLineIndex: Int,
+    ) {
+        if (!ready.await()) {
+            _state.value = PreviewPlaybackState.Error(
+                "Text-to-speech is unavailable. Install or enable an Android speech engine.",
+            )
+            return
+        }
+        synchronized(lock) {
+            val segment = currentSegment ?: return
+            mode = Mode.ANSWER
+            pendingAnswerQuestion = question
+            pendingAnswerText = answerText
+            pendingAnswerSpeaker = speaker
+            resumeAfterAnswerIndex = resumeFromLineIndex.coerceIn(0, segment.dialogue.size)
+            configureHost(speaker)
+            _state.value = PreviewPlaybackState.Answering(
+                question = question,
+                answerText = answerText,
+                speaker = speaker,
+                resumeFromLineIndex = resumeAfterAnswerIndex,
+            )
+            val result = engine.speak(
+                answerText,
+                TextToSpeech.QUEUE_FLUSH,
+                Bundle(),
+                "answer:${segment.id}:${answerText.hashCode()}",
+            )
+            if (result == TextToSpeech.ERROR) reportError()
         }
     }
 
@@ -115,7 +199,7 @@ class AndroidTtsPreviewPlayer @Inject constructor(
             _state.value = PreviewPlaybackState.Completed
             return
         }
-        currentLineIndex = index
+        lineIndex = index
         configureHost(line.speaker)
         _state.value = PreviewPlaybackState.Playing(index, line)
         val result = engine.speak(
@@ -152,4 +236,6 @@ class AndroidTtsPreviewPlayer @Inject constructor(
             "Android could not play this line. Check the installed text-to-speech engine.",
         )
     }
+
+    private enum class Mode { SEGMENT, ANSWER }
 }

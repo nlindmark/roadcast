@@ -28,6 +28,6 @@ On Windows use `gradlew.bat`. The current implementation contains no secrets and
 
 Open **Debug** to start or pause route playback, reset, jump to the next route-adjacent place, or choose a 0.5×–4× speed. Candidate cards expose each score component, penalties, selection, and rationale. The Player destination reflects the highest-ranked eligible upcoming story.
 
-On **Player**, tap **Start journey** to move along the simulated route and autoplay the next ranked place. Pause, resume, replay, and skip are available. The two hosts use separate installed voices where the device provides them, with pitch and speaking-rate differences as a fallback. No network speech service is required.
+On **Player**, tap **Start journey** to move along the simulated route and autoplay the next ranked place. Pause, resume, replay, and skip are available. Tap **Ask** to type a question, hear a grounded answer, and resume the story. The two hosts use separate installed voices where the device provides them, with pitch and speaking-rate differences as a fallback. No network speech service is required.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for extraction boundaries and the milestone plan.
