@@ -36,6 +36,18 @@ class FakeDialogueGenerator @Inject constructor(
         previousContext: PreviousPodcastContext?,
         preferences: PodcastPreferences,
     ): PodcastSegment {
+        val isFollowUp = previousContext?.recentPlaceIds?.lastOrNull() == knowledge.placeId
+        return if (isFollowUp) {
+            generateFollowUpSegment(knowledge, previousContext)
+        } else {
+            generatePrimarySegment(knowledge, previousContext)
+        }
+    }
+
+    private fun generatePrimarySegment(
+        knowledge: PlaceKnowledgePackage,
+        previousContext: PreviousPodcastContext?,
+    ): PodcastSegment {
         val angle = knowledge.stories.firstOrNull()
         val firstFact = knowledge.facts.getOrNull(0)
         val secondFact = knowledge.facts.getOrNull(1)
@@ -64,7 +76,7 @@ class FakeDialogueGenerator @Inject constructor(
                     text = "Coming up is $placeName. ${angle?.premise ?: knowledge.overview}",
                     interruptibleAfter = true,
                     sourceIds = knowledge.sources.map { it.id },
-                    factIds = knowledge.facts.map { it.id },
+                    factIds = listOfNotNull(firstFact?.id),
                 ),
             )
             add(
@@ -123,21 +135,129 @@ class FakeDialogueGenerator @Inject constructor(
                 DialogueLineDto(
                     id = "${knowledge.placeId}-host-a-outro",
                     speaker = HostId.HOST_A.name,
-                    text = "That is enough for $placeName for now. We can pick this up again if you ask.",
+                    text = "That is enough for $placeName for now. Tap Tell me more if you want the next layer.",
                     interruptibleAfter = true,
                 ),
             )
         }
 
-        val draft = DialogueSegmentDto(
-            id = "segment-${knowledge.placeId}-${previousContext?.segmentSummaries?.size ?: 0}",
-            placeId = knowledge.placeId,
+        return validate(
+            knowledge = knowledge,
+            segmentId = "segment-${knowledge.placeId}-0",
             title = placeName,
             intro = bridge,
+            lines = lines,
+            storyAngleId = angle?.id,
+        )
+    }
+
+    private fun generateFollowUpSegment(
+        knowledge: PlaceKnowledgePackage,
+        previousContext: PreviousPodcastContext?,
+    ): PodcastSegment {
+        val placeName = knowledge.stories.firstOrNull()?.title ?: knowledge.placeId
+        val usedFactIds = previousContext?.recentDialogue
+            ?.flatMap { it.factIds }
+            ?.toSet()
+            .orEmpty()
+        val unusedFacts = knowledge.facts.filterNot { it.id in usedFactIds }
+            .ifEmpty { knowledge.facts.drop(2) }
+            .ifEmpty { knowledge.facts.takeLast(2) }
+        val first = unusedFacts.getOrNull(0)
+        val second = unusedFacts.getOrNull(1) ?: unusedFacts.getOrNull(0)
+        val depth = (previousContext?.segmentSummaries?.count {
+            it.contains(placeName, ignoreCase = true) || it.startsWith("More:")
+        } ?: 0) + 1
+
+        val lines = buildList {
+            add(
+                DialogueLineDto(
+                    id = "${knowledge.placeId}-more-a-open",
+                    speaker = HostId.HOST_A.name,
+                    text = "Alright, staying with $placeName a little longer. There is another layer worth hearing.",
+                    interruptibleAfter = true,
+                    sourceIds = knowledge.sources.map { it.id },
+                ),
+            )
+            add(
+                DialogueLineDto(
+                    id = "${knowledge.placeId}-more-b-fact-1",
+                    speaker = HostId.HOST_B.name,
+                    text = first?.let {
+                        "Here is a detail we have not used yet: ${it.statement.trimEnd('.')}"
+                    } ?: "We do not have unused verified facts left for this place.",
+                    interruptibleAfter = true,
+                    sourceIds = first?.sourceIds.orEmpty(),
+                    factIds = listOfNotNull(first?.id),
+                ),
+            )
+            add(
+                DialogueLineDto(
+                    id = "${knowledge.placeId}-more-a-prompt",
+                    speaker = HostId.HOST_A.name,
+                    text = "Does that change how we should picture the place from the road?",
+                    interruptibleAfter = true,
+                ),
+            )
+            add(
+                DialogueLineDto(
+                    id = "${knowledge.placeId}-more-b-fact-2",
+                    speaker = HostId.HOST_B.name,
+                    text = second?.let {
+                        "Yes. ${it.statement.trimEnd('.')} That keeps us inside the sourced material."
+                    } ?: "Without another sourced fact, we should not invent color.",
+                    interruptibleAfter = true,
+                    sourceIds = second?.sourceIds.orEmpty(),
+                    factIds = listOfNotNull(second?.id),
+                ),
+            )
+            add(
+                DialogueLineDto(
+                    id = "${knowledge.placeId}-more-a-close",
+                    speaker = HostId.HOST_A.name,
+                    text = "Good. That is the deeper pass on $placeName. Ask a question anytime, or skip when you are ready to move on.",
+                    interruptibleAfter = true,
+                ),
+            )
+            add(
+                DialogueLineDto(
+                    id = "${knowledge.placeId}-more-b-close",
+                    speaker = HostId.HOST_B.name,
+                    text = "And if the package had more verified facts, we would keep going. For now, this is the honest remainder.",
+                    interruptibleAfter = true,
+                    sourceIds = knowledge.sources.map { it.id },
+                    factIds = unusedFacts.map { it.id },
+                ),
+            )
+        }
+
+        return validate(
+            knowledge = knowledge,
+            segmentId = "segment-${knowledge.placeId}-more-$depth",
+            title = "More: $placeName",
+            intro = "Staying with $placeName for a deeper pass.",
+            lines = lines,
+            storyAngleId = knowledge.stories.firstOrNull()?.id,
+        )
+    }
+
+    private fun validate(
+        knowledge: PlaceKnowledgePackage,
+        segmentId: String,
+        title: String,
+        intro: String?,
+        lines: List<DialogueLineDto>,
+        storyAngleId: String?,
+    ): PodcastSegment {
+        val draft = DialogueSegmentDto(
+            id = segmentId,
+            placeId = knowledge.placeId,
+            title = title,
+            intro = intro,
             dialogue = lines,
             estimatedDurationSeconds = validator.estimateDurationSeconds(lines),
             sourceIds = knowledge.sources.map { it.id },
-            storyAngleId = angle?.id,
+            storyAngleId = storyAngleId,
         )
         val validated = validator.validateOrRepair(draft, knowledge)
         return validated.dto.toDomain(generatedAtEpochMillis = System.currentTimeMillis())
@@ -253,8 +373,16 @@ class FakePodcastOrchestrator @Inject constructor(
             recentDialogue = current.segment?.dialogue.orEmpty(),
         )
         val segment = dialogueGenerator.generateSegment(knowledge, context, preferences)
-        currentItem = current.copy(segment = segment, status = QueueItemStatus.PREPARING)
-        _state.value = PodcastOrchestratorState.Preparing(current.place)
+        val audio = segment.dialogue.map { line ->
+            GeneratedAudioLine(line.id, speechGenerator.synthesize(line.text, line.speaker))
+        }
+        val prepared = current.copy(
+            segment = segment,
+            audioLines = audio,
+            status = QueueItemStatus.READY,
+        )
+        currentItem = prepared
+        _state.value = PodcastOrchestratorState.Ready(listOf(prepared) + upcoming)
     }
 
     override suspend fun askQuestion(question: String) {

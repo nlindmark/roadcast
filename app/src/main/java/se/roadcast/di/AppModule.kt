@@ -8,7 +8,8 @@ import dagger.hilt.components.SingletonComponent
 import se.roadcast.core.ai.DialogueGenerator
 import se.roadcast.core.ai.DialogueValidator
 import se.roadcast.core.ai.UserSpeechRecognizer
-import se.roadcast.core.audio.AndroidTtsPreviewPlayer
+import se.roadcast.core.audio.AndroidTtsSpeechGenerator
+import se.roadcast.core.audio.Media3PodcastPreviewPlayer
 import se.roadcast.core.audio.PodcastOrchestrator
 import se.roadcast.core.audio.PodcastPreviewPlayer
 import se.roadcast.core.audio.SpeechGenerator
@@ -21,7 +22,6 @@ import se.roadcast.core.network.RankedPlaceDiscoveryRepository
 import se.roadcast.simulation.FakeDialogueGenerator
 import se.roadcast.simulation.FakePlaceRepository
 import se.roadcast.simulation.FakePodcastOrchestrator
-import se.roadcast.simulation.FakeSpeechGenerator
 import se.roadcast.simulation.FakeSpeechRecognizer
 import se.roadcast.simulation.InMemoryHistoryStore
 import se.roadcast.simulation.SimulationLocationSource
@@ -38,8 +38,8 @@ abstract class SimulationBindings {
     @Binds abstract fun pipeline(implementation: FakePlaceRepository): SimulationPipeline
     @Binds abstract fun history(implementation: InMemoryHistoryStore): HistoryStore
     @Binds abstract fun dialogue(implementation: FakeDialogueGenerator): DialogueGenerator
-    @Binds abstract fun speech(implementation: FakeSpeechGenerator): SpeechGenerator
-    @Binds abstract fun previewPlayer(implementation: AndroidTtsPreviewPlayer): PodcastPreviewPlayer
+    @Binds abstract fun speech(implementation: AndroidTtsSpeechGenerator): SpeechGenerator
+    @Binds abstract fun previewPlayer(implementation: Media3PodcastPreviewPlayer): PodcastPreviewPlayer
     @Binds abstract fun recognizer(implementation: FakeSpeechRecognizer): UserSpeechRecognizer
     @Binds abstract fun orchestrator(implementation: FakePodcastOrchestrator): PodcastOrchestrator
 }

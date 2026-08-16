@@ -18,6 +18,7 @@ import se.roadcast.core.model.AskOverlayState
 import se.roadcast.core.model.HostId
 import se.roadcast.core.model.PlaceCandidate
 import se.roadcast.core.model.PlaceCategory
+import se.roadcast.core.model.PlaceKnowledgePackage
 import se.roadcast.core.model.PodcastPreferences
 import se.roadcast.core.model.PodcastSegment
 import se.roadcast.core.model.PreviousPodcastContext
@@ -37,6 +38,8 @@ sealed interface PlayerUiState {
         val autoPlayEnabled: Boolean = true,
         val ask: AskOverlayState? = null,
         val lastAnswer: String? = null,
+        val followUpCount: Int = 0,
+        val canTellMeMore: Boolean = false,
     ) : PlayerUiState
     data class Empty(val message: String, val simulationRunning: Boolean = false) : PlayerUiState
     data class Error(val message: String) : PlayerUiState
@@ -68,6 +71,10 @@ class PlayerViewModel @Inject constructor(
     private var recentPlaceIds = emptyList<String>()
     private var recentSummaries = emptyList<String>()
     private var resumeAfterAskIndex = 0
+
+    companion object {
+        private const val MaxFollowUps = 1
+    }
 
     init {
         viewModelScope.launch {
@@ -265,12 +272,64 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun tellMeMore() {
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        if (!current.canTellMeMore || current.segment == null || current.ask != null) return
+        if (current.playback is PreviewPlaybackState.Initializing ||
+            current.playback is PreviewPlaybackState.Answering
+        ) {
+            return
+        }
+        askJob?.cancel()
+        prepareJob?.cancel()
+        preparingPlaceId = null
+        prepareJob = viewModelScope.launch {
+            preparingPlaceId = current.selected.id
+            _uiState.value = current.copy(playback = PreviewPlaybackState.Initializing, ask = null)
+            runCatching {
+                val previousSegment = current.segment ?: return@launch
+                val knowledge = knowledgeRepository.buildKnowledgePackage(current.selected)
+                val context = PreviousPodcastContext(
+                    recentPlaceIds = recentPlaceIds + current.selected.id,
+                    segmentSummaries = recentSummaries + listOf(previousSegment.title),
+                    recentDialogue = previousSegment.dialogue,
+                )
+                val segment = dialogueGenerator.generateSegment(knowledge, context, preferences)
+                val latest = _uiState.value as? PlayerUiState.Success
+                if (latest?.selected?.id != current.selected.id) return@launch
+                val followUpCount = latest.followUpCount + 1
+                _uiState.value = latest.copy(
+                    segment = segment,
+                    followUpCount = followUpCount,
+                    canTellMeMore = followUpCount < MaxFollowUps &&
+                        hasUnusedFacts(knowledge, segment.dialogue.flatMap { it.factIds }.toSet()),
+                    playback = PreviewPlaybackState.Initializing,
+                    lastAnswer = null,
+                )
+                previewPlayer.play(segment)
+            }.onFailure { error ->
+                preparingPlaceId = null
+                val latest = _uiState.value as? PlayerUiState.Success ?: return@launch
+                _uiState.value = latest.copy(
+                    playback = PreviewPlaybackState.Error(
+                        error.message ?: "Could not prepare a deeper segment.",
+                    ),
+                )
+            }
+        }
+    }
+
     private fun prepareAndPlay(current: PlayerUiState.Success) {
         if (preparingPlaceId == current.selected.id) return
         prepareJob?.cancel()
         prepareJob = viewModelScope.launch {
             preparingPlaceId = current.selected.id
-            _uiState.value = current.copy(playback = PreviewPlaybackState.Initializing, ask = null)
+            _uiState.value = current.copy(
+                playback = PreviewPlaybackState.Initializing,
+                ask = null,
+                followUpCount = 0,
+                canTellMeMore = false,
+            )
             runCatching {
                 val knowledge = knowledgeRepository.buildKnowledgePackage(current.selected)
                 val context = PreviousPodcastContext(
@@ -280,8 +339,11 @@ class PlayerViewModel @Inject constructor(
                 val segment = dialogueGenerator.generateSegment(knowledge, context, preferences)
                 val latest = _uiState.value as? PlayerUiState.Success
                 if (latest?.selected?.id != current.selected.id) return@launch
+                val usedFactIds = segment.dialogue.flatMap { it.factIds }.toSet()
                 _uiState.value = latest.copy(
                     segment = segment,
+                    followUpCount = 0,
+                    canTellMeMore = hasUnusedFacts(knowledge, usedFactIds),
                     playback = PreviewPlaybackState.Initializing,
                 )
                 previewPlayer.play(segment)
@@ -297,11 +359,19 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    private fun hasUnusedFacts(
+        knowledge: PlaceKnowledgePackage,
+        usedFactIds: Set<String>,
+    ): Boolean = knowledge.facts.any { it.id !in usedFactIds }
+
     private suspend fun onSegmentCompleted(current: PlayerUiState.Success) {
         if (current.selected.id in historyStore.playedPlaceIds.value) return
-        recentPlaceIds = (recentPlaceIds + current.selected.id).takeLast(5)
-        recentSummaries = (recentSummaries + listOfNotNull(current.segment?.title)).takeLast(5)
         preparingPlaceId = null
+        recentSummaries = (recentSummaries + listOfNotNull(current.segment?.title)).takeLast(5)
+        if (current.canTellMeMore) {
+            return
+        }
+        recentPlaceIds = (recentPlaceIds + current.selected.id).takeLast(5)
         historyStore.markPlayed(current.selected.id)
     }
 

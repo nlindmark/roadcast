@@ -45,6 +45,7 @@ private data class PlaceFixture(
     val location: GeoPoint,
     val category: PlaceCategory,
     val importance: Double,
+    val imageUrl: String? = null,
     val knowledge: KnowledgeFixture,
 ) {
     fun toDomain(): PlaceCandidate {
@@ -74,6 +75,7 @@ private data class PlaceFixture(
             bearingFromUser = 0.0,
             category = category,
             importanceScore = importance,
+            imageUrl = imageUrl,
             shortDescription = knowledge.summary,
             knowledgePackage = knowledgePackage,
         )

@@ -2,55 +2,73 @@
   {
     "id":"goteborg-central","name":"Göteborgs centralstation","location":{"latitude":57.70887,"longitude":11.97354},
     "category":"ARCHITECTURE","importance":0.75,
+    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/G%C3%B6teborgs_centralstation_2010.jpg/640px-G%C3%B6teborgs_centralstation_2010.jpg",
     "knowledge":{"placeId":"goteborg-central","summary":"A railway gateway opened in 1858.","sourceQuality":0.90,
       "facts":[
         {"id":"gc-1","statement":"The station opened in 1858.","confidence":0.95,"provenance":[{"sourceId":"trafikverket","title":"Station history","kind":"OFFICIAL"}]},
-        {"id":"gc-2","statement":"It is Sweden's second-largest railway station.","confidence":0.90,"provenance":[{"sourceId":"goteborg","title":"Centralstationen","kind":"OFFICIAL"}]}
+        {"id":"gc-2","statement":"It is Sweden's second-largest railway station.","confidence":0.90,"provenance":[{"sourceId":"goteborg","title":"Centralstationen","kind":"OFFICIAL"}]},
+        {"id":"gc-3","statement":"The main hall was rebuilt after a fire in 1923.","confidence":0.88,"provenance":[{"sourceId":"trafikverket","title":"Station history","kind":"OFFICIAL"}]},
+        {"id":"gc-4","statement":"Drottningtorget outside the station is a major tram hub.","confidence":0.91,"provenance":[{"sourceId":"goteborg","title":"Centralstationen","kind":"OFFICIAL"}]}
       ]}
   },
   {
     "id":"tradgardsforeningen","name":"Trädgårdsföreningen","location":{"latitude":57.70631,"longitude":11.97780},
     "category":"NATURE","importance":0.70,
+    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Tradgardsforeningen_Goteborg.jpg/640px-Tradgardsforeningen_Goteborg.jpg",
     "knowledge":{"placeId":"tradgardsforeningen","summary":"One of Europe's best-preserved nineteenth-century parks.","sourceQuality":0.92,
       "facts":[
         {"id":"tf-1","statement":"The park was founded in 1842.","confidence":0.96,"provenance":[{"sourceId":"goteborg-parks","title":"Park history","kind":"OFFICIAL"}]},
-        {"id":"tf-2","statement":"Its Palm House was inspired by Crystal Palace.","confidence":0.92,"provenance":[{"sourceId":"park-museum","title":"Palmhuset","kind":"MUSEUM"}]}
+        {"id":"tf-2","statement":"Its Palm House was inspired by Crystal Palace.","confidence":0.92,"provenance":[{"sourceId":"park-museum","title":"Palmhuset","kind":"MUSEUM"}]},
+        {"id":"tf-3","statement":"The park is a listed cultural heritage site.","confidence":0.94,"provenance":[{"sourceId":"goteborg-parks","title":"Park history","kind":"OFFICIAL"}]},
+        {"id":"tf-4","statement":"Seasonal flower exhibitions still draw visitors through the year.","confidence":0.89,"provenance":[{"sourceId":"park-museum","title":"Palmhuset","kind":"MUSEUM"}]}
       ]}
   },
   {
     "id":"ullevi","name":"Ullevi","location":{"latitude":57.70502,"longitude":11.98734},
     "category":"CULTURE","importance":0.80,
+    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Ullevi_stadium.jpg/640px-Ullevi_stadium.jpg",
     "knowledge":{"placeId":"ullevi","summary":"A landmark arena built for the 1958 FIFA World Cup.","sourceQuality":0.88,
       "facts":[
         {"id":"ul-1","statement":"Ullevi opened in 1958.","confidence":0.98,"provenance":[{"sourceId":"got-event","title":"Ullevi facts","kind":"OFFICIAL"}]},
-        {"id":"ul-2","statement":"The arena has hosted major concerts and athletics championships.","confidence":0.90,"provenance":[{"sourceId":"ullevi","title":"Events archive","kind":"OFFICIAL"}]}
+        {"id":"ul-2","statement":"The arena has hosted major concerts and athletics championships.","confidence":0.90,"provenance":[{"sourceId":"ullevi","title":"Events archive","kind":"OFFICIAL"}]},
+        {"id":"ul-3","statement":"Nils Ericson designed the original bowl-shaped arena.","confidence":0.86,"provenance":[{"sourceId":"got-event","title":"Ullevi facts","kind":"OFFICIAL"}]},
+        {"id":"ul-4","statement":"IFK Göteborg has played home matches at Ullevi for decades.","confidence":0.93,"provenance":[{"sourceId":"ullevi","title":"Events archive","kind":"OFFICIAL"}]}
       ]}
   },
   {
     "id":"varldskulturmuseet","name":"Världskulturmuseet","location":{"latitude":57.69462,"longitude":11.98877},
     "category":"CULTURE","importance":0.66,
+    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Varldskulturmuseet_Goteborg.jpg/640px-Varldskulturmuseet_Goteborg.jpg",
     "knowledge":{"placeId":"varldskulturmuseet","summary":"A national museum focused on global contemporary culture.","sourceQuality":0.94,
       "facts":[
         {"id":"vk-1","statement":"The museum opened in 2004.","confidence":0.98,"provenance":[{"sourceId":"varldskultur","title":"About the museum","kind":"MUSEUM"}]},
-        {"id":"vk-2","statement":"Its building was designed by Brisac Gonzalez.","confidence":0.95,"provenance":[{"sourceId":"statens-fastighetsverk","title":"Museum architecture","kind":"OFFICIAL"}]}
+        {"id":"vk-2","statement":"Its building was designed by Brisac Gonzalez.","confidence":0.95,"provenance":[{"sourceId":"statens-fastighetsverk","title":"Museum architecture","kind":"OFFICIAL"}]},
+        {"id":"vk-3","statement":"It belongs to the National Museums of World Culture.","confidence":0.97,"provenance":[{"sourceId":"varldskultur","title":"About the museum","kind":"MUSEUM"}]},
+        {"id":"vk-4","statement":"Exhibitions often connect global collections to current social questions.","confidence":0.90,"provenance":[{"sourceId":"varldskultur","title":"About the museum","kind":"MUSEUM"}]}
       ]}
   },
   {
     "id":"liseberg","name":"Liseberg","location":{"latitude":57.69528,"longitude":11.99256},
     "category":"CULTURE","importance":0.90,
+    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Liseberg_entrance.jpg/640px-Liseberg_entrance.jpg",
     "knowledge":{"placeId":"liseberg","summary":"A Gothenburg amusement park operating since 1923.","sourceQuality":0.91,
       "facts":[
         {"id":"li-1","statement":"Liseberg opened for Gothenburg's 1923 jubilee exhibition.","confidence":0.97,"provenance":[{"sourceId":"liseberg","title":"Our history","kind":"OFFICIAL"}]},
-        {"id":"li-2","statement":"The park is owned by the City of Gothenburg.","confidence":0.96,"provenance":[{"sourceId":"goteborg","title":"Municipal companies","kind":"OFFICIAL"}]}
+        {"id":"li-2","statement":"The park is owned by the City of Gothenburg.","confidence":0.96,"provenance":[{"sourceId":"goteborg","title":"Municipal companies","kind":"OFFICIAL"}]},
+        {"id":"li-3","statement":"Liseberg is one of the most visited amusement parks in the Nordic region.","confidence":0.92,"provenance":[{"sourceId":"liseberg","title":"Our history","kind":"OFFICIAL"}]},
+        {"id":"li-4","statement":"The park's Christmas market has become a major seasonal tradition.","confidence":0.90,"provenance":[{"sourceId":"liseberg","title":"Our history","kind":"OFFICIAL"}]}
       ]}
   },
   {
     "id":"orgryte-old-church","name":"Örgryte gamla kyrka","location":{"latitude":57.69018,"longitude":12.01126},
     "category":"HISTORY","importance":0.73,
+    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Orgryte_gamla_kyrka.jpg/640px-Orgryte_gamla_kyrka.jpg",
     "knowledge":{"placeId":"orgryte-old-church","summary":"A medieval-origin church beside the old eastern road.","sourceQuality":0.86,
       "facts":[
         {"id":"og-1","statement":"Parts of the church date from the Middle Ages.","confidence":0.88,"provenance":[{"sourceId":"svenska-kyrkan","title":"Church history","kind":"OFFICIAL"}]},
-        {"id":"og-2","statement":"The building has been expanded several times.","confidence":0.91,"provenance":[{"sourceId":"bebyggelse-reg","title":"Building record","kind":"OFFICIAL"}]}
+        {"id":"og-2","statement":"The building has been expanded several times.","confidence":0.91,"provenance":[{"sourceId":"bebyggelse-reg","title":"Building record","kind":"OFFICIAL"}]},
+        {"id":"og-3","statement":"The churchyard holds graves from several centuries of local history.","confidence":0.87,"provenance":[{"sourceId":"svenska-kyrkan","title":"Church history","kind":"OFFICIAL"}]},
+        {"id":"og-4","statement":"Örgryte was once a rural parish before becoming part of Gothenburg.","confidence":0.89,"provenance":[{"sourceId":"bebyggelse-reg","title":"Building record","kind":"OFFICIAL"}]}
       ]}
   }
 ]

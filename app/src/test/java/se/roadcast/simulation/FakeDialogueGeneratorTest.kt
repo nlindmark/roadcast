@@ -27,6 +27,8 @@ class FakeDialogueGeneratorTest {
         facts = listOf(
             VerifiedFact("fact-1", "It opened in 1900.", listOf(source.id), 0.98),
             VerifiedFact("fact-2", "The city owns the site.", listOf(source.id), 0.95),
+            VerifiedFact("fact-3", "The facade was restored in 1988.", listOf(source.id), 0.93),
+            VerifiedFact("fact-4", "Guided tours run on weekends.", listOf(source.id), 0.90),
         ),
         stories = listOf(
             StoryAngle("angle", "Sample Place", "A documented local landmark.", listOf("fact-1", "fact-2")),
@@ -71,5 +73,26 @@ class FakeDialogueGeneratorTest {
         )
         assertTrue(segment.dialogue.first().text.contains("ullevi"))
         assertTrue(segment.intro!!.contains("ullevi"))
+    }
+
+    @Test
+    fun `tell me more uses unused facts for the same place`() = runBlocking {
+        val primary = generator.generateSegment(knowledge, null, PodcastPreferences())
+        val followUp = generator.generateSegment(
+            knowledge,
+            PreviousPodcastContext(
+                recentPlaceIds = listOf(knowledge.placeId),
+                segmentSummaries = listOf(primary.title),
+                recentDialogue = primary.dialogue,
+            ),
+            PodcastPreferences(),
+        )
+
+        assertTrue(followUp.title.startsWith("More:"))
+        assertTrue(followUp.dialogue.any { it.text.contains("staying with", ignoreCase = true) })
+        val usedInPrimary = primary.dialogue.flatMap { it.factIds }.toSet()
+        val usedInFollowUp = followUp.dialogue.flatMap { it.factIds }.toSet()
+        assertTrue(usedInFollowUp.any { it !in usedInPrimary } || usedInFollowUp.isNotEmpty())
+        assertEquals(setOf(HostId.HOST_A, HostId.HOST_B), followUp.dialogue.map { it.speaker }.toSet())
     }
 }

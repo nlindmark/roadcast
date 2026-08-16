@@ -95,6 +95,7 @@ private fun RoadcastApp() {
                         onReplay = viewModel::replay,
                         onSkip = viewModel::skip,
                         onAsk = viewModel::openAsk,
+                        onTellMeMore = viewModel::tellMeMore,
                         onAskQuestionChange = viewModel::updateAskQuestion,
                         onSuggestedQuestion = viewModel::useSuggestedQuestion,
                         onSubmitAsk = viewModel::submitAsk,
