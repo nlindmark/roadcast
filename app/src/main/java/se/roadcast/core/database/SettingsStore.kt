@@ -23,6 +23,7 @@ data class AppSettings(
     val locationMode: LocationMode = LocationMode.SIMULATION,
     val contentSource: ContentSource = ContentSource.SIMULATION,
     val autoPlay: Boolean = true,
+    val allowNetworkVoices: Boolean = false,
 )
 
 interface SettingsRepository {
@@ -30,6 +31,7 @@ interface SettingsRepository {
     suspend fun setLocationMode(mode: LocationMode)
     suspend fun setContentSource(source: ContentSource)
     suspend fun setAutoPlay(enabled: Boolean)
+    suspend fun setAllowNetworkVoices(enabled: Boolean)
 }
 
 @Singleton
@@ -47,6 +49,7 @@ class SettingsStore @Inject constructor(
                 ?.let { runCatching { ContentSource.valueOf(it) }.getOrNull() }
                 ?: ContentSource.SIMULATION,
             autoPlay = prefs[Keys.autoPlay] ?: true,
+            allowNetworkVoices = prefs[Keys.allowNetworkVoices] ?: false,
         )
     }
 
@@ -62,10 +65,15 @@ class SettingsStore @Inject constructor(
         dataStore.edit { it[Keys.autoPlay] = enabled }
     }
 
+    override suspend fun setAllowNetworkVoices(enabled: Boolean) {
+        dataStore.edit { it[Keys.allowNetworkVoices] = enabled }
+    }
+
     private object Keys {
         val locationMode = stringPreferencesKey("location_mode")
         val contentSource = stringPreferencesKey("content_source")
         val autoPlay = booleanPreferencesKey("auto_play")
+        val allowNetworkVoices = booleanPreferencesKey("allow_network_voices")
     }
 }
 
@@ -85,5 +93,9 @@ class InMemorySettingsRepository(
 
     override suspend fun setAutoPlay(enabled: Boolean) {
         state.update { it.copy(autoPlay = enabled) }
+    }
+
+    override suspend fun setAllowNetworkVoices(enabled: Boolean) {
+        state.update { it.copy(allowNetworkVoices = enabled) }
     }
 }

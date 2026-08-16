@@ -2,7 +2,7 @@
   {
     "id":"goteborg-central","name":"Göteborgs centralstation","location":{"latitude":57.70887,"longitude":11.97354},
     "category":"ARCHITECTURE","importance":0.75,
-    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/G%C3%B6teborgs_centralstation_2010.jpg/640px-G%C3%B6teborgs_centralstation_2010.jpg",
+    "imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/G%C3%B6teborgs_centralstation_2010.jpg?width=960",
     "knowledge":{"placeId":"goteborg-central","summary":"A railway gateway opened in 1858.","sourceQuality":0.90,
       "facts":[
         {"id":"gc-1","statement":"The station opened in 1858.","confidence":0.95,"provenance":[{"sourceId":"trafikverket","title":"Station history","kind":"OFFICIAL"}]},
@@ -14,7 +14,7 @@
   {
     "id":"tradgardsforeningen","name":"Trädgårdsföreningen","location":{"latitude":57.70631,"longitude":11.97780},
     "category":"NATURE","importance":0.70,
-    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Tradgardsforeningen_Goteborg.jpg/640px-Tradgardsforeningen_Goteborg.jpg",
+    "imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Tr%C3%A4dg%C3%A5rdsf%C3%B6reningen%2C_G%C3%B6teborg.jpg?width=960",
     "knowledge":{"placeId":"tradgardsforeningen","summary":"One of Europe's best-preserved nineteenth-century parks.","sourceQuality":0.92,
       "facts":[
         {"id":"tf-1","statement":"The park was founded in 1842.","confidence":0.96,"provenance":[{"sourceId":"goteborg-parks","title":"Park history","kind":"OFFICIAL"}]},
@@ -26,7 +26,7 @@
   {
     "id":"ullevi","name":"Ullevi","location":{"latitude":57.70502,"longitude":11.98734},
     "category":"CULTURE","importance":0.80,
-    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Ullevi_stadium.jpg/640px-Ullevi_stadium.jpg",
+    "imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Ullevi_2013.jpg?width=960",
     "knowledge":{"placeId":"ullevi","summary":"A landmark arena built for the 1958 FIFA World Cup.","sourceQuality":0.88,
       "facts":[
         {"id":"ul-1","statement":"Ullevi opened in 1958.","confidence":0.98,"provenance":[{"sourceId":"got-event","title":"Ullevi facts","kind":"OFFICIAL"}]},
@@ -38,7 +38,7 @@
   {
     "id":"varldskulturmuseet","name":"Världskulturmuseet","location":{"latitude":57.69462,"longitude":11.98877},
     "category":"CULTURE","importance":0.66,
-    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Varldskulturmuseet_Goteborg.jpg/640px-Varldskulturmuseet_Goteborg.jpg",
+    "imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/V%C3%A4rldskulturmuseet_exteri%C3%B6r.jpg?width=960",
     "knowledge":{"placeId":"varldskulturmuseet","summary":"A national museum focused on global contemporary culture.","sourceQuality":0.94,
       "facts":[
         {"id":"vk-1","statement":"The museum opened in 2004.","confidence":0.98,"provenance":[{"sourceId":"varldskultur","title":"About the museum","kind":"MUSEUM"}]},
@@ -50,7 +50,7 @@
   {
     "id":"liseberg","name":"Liseberg","location":{"latitude":57.69528,"longitude":11.99256},
     "category":"CULTURE","importance":0.90,
-    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Liseberg_entrance.jpg/640px-Liseberg_entrance.jpg",
+    "imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Liseberg_entrance_2013.jpg?width=960",
     "knowledge":{"placeId":"liseberg","summary":"A Gothenburg amusement park operating since 1923.","sourceQuality":0.91,
       "facts":[
         {"id":"li-1","statement":"Liseberg opened for Gothenburg's 1923 jubilee exhibition.","confidence":0.97,"provenance":[{"sourceId":"liseberg","title":"Our history","kind":"OFFICIAL"}]},
@@ -62,7 +62,7 @@
   {
     "id":"orgryte-old-church","name":"Örgryte gamla kyrka","location":{"latitude":57.69018,"longitude":12.01126},
     "category":"HISTORY","importance":0.73,
-    "imageUrl":"https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Orgryte_gamla_kyrka.jpg/640px-Orgryte_gamla_kyrka.jpg",
+    "imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/%C3%96rgryte_gamla_kyrka_sept_2011.jpg?width=960",
     "knowledge":{"placeId":"orgryte-old-church","summary":"A medieval-origin church beside the old eastern road.","sourceQuality":0.86,
       "facts":[
         {"id":"og-1","statement":"Parts of the church date from the Middle Ages.","confidence":0.88,"provenance":[{"sourceId":"svenska-kyrkan","title":"Church history","kind":"OFFICIAL"}]},

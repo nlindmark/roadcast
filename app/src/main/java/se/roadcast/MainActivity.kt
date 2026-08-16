@@ -30,6 +30,8 @@ import se.roadcast.feature.debug.DebugScreen
 import se.roadcast.feature.debug.DebugViewModel
 import se.roadcast.feature.history.HistoryScreen
 import se.roadcast.feature.history.HistoryViewModel
+import se.roadcast.feature.map.MapScreen
+import se.roadcast.feature.map.MapViewModel
 import se.roadcast.feature.player.PlayerScreen
 import se.roadcast.feature.player.PlayerViewModel
 import se.roadcast.feature.settings.SettingsScreen
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
 private enum class Destination(val route: String, val label: String, val glyph: String) {
     Player("player", "Player", "▶"),
+    Map("map", "Map", "⧉"),
     History("history", "History", "↺"),
     Settings("settings", "Settings", "⚙"),
     Debug("debug", "Debug", "⌁"),
@@ -112,6 +115,11 @@ private fun RoadcastApp() {
                         onOpenDebug = { navController.navigate(Destination.Debug.route) },
                     )
                 }
+                composable(Destination.Map.route) {
+                    val viewModel: MapViewModel = hiltViewModel()
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    MapScreen(state)
+                }
                 composable(Destination.History.route) {
                     val viewModel: HistoryViewModel = hiltViewModel()
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -129,6 +137,7 @@ private fun RoadcastApp() {
                         onAutoPlay = viewModel::setAutoPlay,
                         onSimulationEnabled = viewModel::setSimulationEnabled,
                         onRemoteEnabled = viewModel::setRemoteEnabled,
+                        onAllowNetworkVoices = viewModel::setAllowNetworkVoices,
                     )
                 }
                 composable(Destination.Debug.route) {

@@ -39,6 +39,7 @@ sealed interface SettingsUiState {
         val remoteEnabled: Boolean,
         val remoteConfigured: Boolean,
         val autoPlay: Boolean,
+        val allowNetworkVoices: Boolean,
         val permissionStatus: LocationPermissionStatus,
         val statusMessage: String?,
     ) : SettingsUiState
@@ -67,6 +68,7 @@ class SettingsViewModel @Inject constructor(
             remoteEnabled = contentSource == ContentSource.REMOTE,
             remoteConfigured = contentSourceController.remoteConfigured,
             autoPlay = settings.autoPlay,
+            allowNetworkVoices = settings.allowNetworkVoices,
             permissionStatus = permission,
             statusMessage = statusMessage(mode, permission, contentSource, lastError),
         )
@@ -78,6 +80,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoPlay(enabled: Boolean) {
         viewModelScope.launch { settingsStore.setAutoPlay(enabled) }
+    }
+
+    fun setAllowNetworkVoices(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.setAllowNetworkVoices(enabled) }
     }
 
     fun setSimulationEnabled(enabled: Boolean) {
@@ -140,6 +146,7 @@ fun SettingsScreen(
     onAutoPlay: (Boolean) -> Unit,
     onSimulationEnabled: (Boolean) -> Unit,
     onRemoteEnabled: (Boolean) -> Unit,
+    onAllowNetworkVoices: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -175,6 +182,12 @@ fun SettingsScreen(
                     checked = state.autoPlay,
                     onChange = onAutoPlay,
                 )
+                SettingRow(
+                    title = "Network voices",
+                    subtitle = "Allow higher-quality cloud TTS voices when installed",
+                    checked = state.allowNetworkVoices,
+                    onChange = onAllowNetworkVoices,
+                )
                 state.statusMessage?.let {
                     Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -185,6 +198,8 @@ fun SettingsScreen(
                             when {
                                 state.remoteEnabled ->
                                     "Remote mode sends travel context and knowledge requests to your API base URL."
+                                state.allowNetworkVoices ->
+                                    "Network voices may send spoken text to the device TTS provider."
                                 state.simulationEnabled ->
                                     "This MVP sends no location or speech data to a network service."
                                 else ->

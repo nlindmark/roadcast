@@ -28,16 +28,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import se.roadcast.core.model.AskOverlayState
 import se.roadcast.core.model.HostId
-import se.roadcast.core.model.PlaceCandidate
-import se.roadcast.core.model.PlaceCategory
 import se.roadcast.core.model.PodcastSegment
 import se.roadcast.core.model.PreviewPlaybackState
 
@@ -134,7 +129,7 @@ private fun SuccessPlayer(
             usingGps = state.usingGps,
         )
         Spacer(Modifier.height(14.dp))
-        PlaceHero(place = state.selected)
+        PlaceImage(place = state.selected)
         Spacer(Modifier.height(16.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -142,7 +137,6 @@ private fun SuccessPlayer(
             tonalElevation = 2.dp,
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(state.selected.name, style = MaterialTheme.typography.headlineSmall)
                 Text(
                     formatDistance(state.selected.distanceMeters) +
                         " · " +
@@ -261,43 +255,6 @@ private fun StatusStrip(
                 style = MaterialTheme.typography.labelMedium,
             )
         }
-    }
-}
-
-@Composable
-private fun PlaceHero(place: PlaceCandidate) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-            .clip(RoundedCornerShape(24.dp)),
-    ) {
-        CategoryCover(place.category, place.name)
-        place.imageUrl?.let { url ->
-            AsyncImage(
-                model = url,
-                contentDescription = place.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryCover(category: PlaceCategory, name: String) {
-    val colors = categoryColors(category)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.linearGradient(colors)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            name.take(1).uppercase(),
-            style = MaterialTheme.typography.displayLarge,
-            color = Color.White.copy(alpha = 0.85f),
-        )
     }
 }
 
@@ -524,18 +481,6 @@ private fun progressLabel(playback: PreviewPlaybackState, segment: PodcastSegmen
 private fun formatDistance(meters: Double): String = when {
     meters < 1000 -> "${meters.toInt()} m ahead"
     else -> String.format("%.1f km ahead", meters / 1000.0)
-}
-
-private fun categoryColors(category: PlaceCategory): List<Color> = when (category) {
-    PlaceCategory.HISTORY -> listOf(Color(0xFF5C4033), Color(0xFFA67C52))
-    PlaceCategory.ARCHITECTURE -> listOf(Color(0xFF4A5568), Color(0xFF718096))
-    PlaceCategory.NATURE -> listOf(Color(0xFF2F5D50), Color(0xFF6B8F71))
-    PlaceCategory.ENGINEERING -> listOf(Color(0xFF37474F), Color(0xFF78909C))
-    PlaceCategory.CULTURE -> listOf(Color(0xFF3D4A6B), Color(0xFF7A6B8A))
-    PlaceCategory.INDUSTRY -> listOf(Color(0xFF455A64), Color(0xFF90A4AE))
-    PlaceCategory.PERSON -> listOf(Color(0xFF5D4037), Color(0xFFA1887F))
-    PlaceCategory.LEGEND -> listOf(Color(0xFF4A3F6B), Color(0xFF8E7DB0))
-    PlaceCategory.OTHER -> listOf(Color(0xFF546E7A), Color(0xFF90A4AE))
 }
 
 @Composable

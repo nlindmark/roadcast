@@ -15,6 +15,7 @@ play-services-location = "21.3.0"
 okhttp = "4.12.0"
 room = "2.7.2"
 datastore = "1.1.7"
+osmdroid = "6.1.20"
 junit = "4.13.2"
 
 [libraries]
@@ -44,6 +45,7 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+osmdroid-android = { module = "org.osmdroid:osmdroid-android", version.ref = "osmdroid" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
