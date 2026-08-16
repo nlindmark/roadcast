@@ -35,6 +35,10 @@ class FakePlaceRepository @Inject constructor(
     private val _snapshot = MutableStateFlow(PipelineSnapshot())
     override val snapshot: StateFlow<PipelineSnapshot> = _snapshot.asStateFlow()
 
+    fun publishSnapshot(snapshot: PipelineSnapshot) {
+        _snapshot.value = snapshot
+    }
+
     override suspend fun findPlacesAhead(
         travelState: TravelState,
         horizonMeters: Double,

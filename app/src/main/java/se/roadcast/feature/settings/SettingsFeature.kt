@@ -22,18 +22,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import se.roadcast.core.location.LocationMode
 import se.roadcast.core.location.LocationModeController
 import se.roadcast.core.location.LocationPermissionStatus
+import se.roadcast.core.network.ContentSource
+import se.roadcast.core.network.ContentSourceController
 import javax.inject.Inject
 
 sealed interface SettingsUiState {
     data object Loading : SettingsUiState
     data class Success(
         val simulationEnabled: Boolean,
+        val remoteEnabled: Boolean,
+        val remoteConfigured: Boolean,
         val autoPlay: Boolean,
         val permissionStatus: LocationPermissionStatus,
         val statusMessage: String?,
@@ -45,6 +48,7 @@ sealed interface SettingsUiState {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val locationModeController: LocationModeController,
+    private val contentSourceController: ContentSourceController,
 ) : ViewModel() {
     private val autoPlay = MutableStateFlow(true)
     private val _permissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -53,13 +57,17 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         locationModeController.mode,
         locationModeController.permissionStatus,
+        contentSourceController.source,
+        contentSourceController.lastError,
         autoPlay,
-    ) { mode, permission, autoPlayEnabled ->
+    ) { mode, permission, contentSource, lastError, autoPlayEnabled ->
         SettingsUiState.Success(
             simulationEnabled = mode == LocationMode.SIMULATION,
+            remoteEnabled = contentSource == ContentSource.REMOTE,
+            remoteConfigured = contentSourceController.remoteConfigured,
             autoPlay = autoPlayEnabled,
             permissionStatus = permission,
-            statusMessage = statusMessage(mode, permission),
+            statusMessage = statusMessage(mode, permission, contentSource, lastError),
         )
     }.stateIn(
         viewModelScope,
@@ -87,6 +95,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setRemoteEnabled(enabled: Boolean) {
+        contentSourceController.setSource(
+            if (enabled) ContentSource.REMOTE else ContentSource.SIMULATION,
+        )
+    }
+
     fun onPermissionResult(granted: Boolean) {
         locationModeController.onPermissionResult(granted)
         if (granted) {
@@ -99,16 +113,23 @@ class SettingsViewModel @Inject constructor(
     private fun statusMessage(
         mode: LocationMode,
         permission: LocationPermissionStatus,
-    ): String? = when {
-        mode == LocationMode.GPS && permission is LocationPermissionStatus.Granted ->
-            "Using real GPS. Fixture places are centered on Gothenburg."
-        permission is LocationPermissionStatus.Denied ->
-            "Location permission denied. Simulation mode stays available."
-        permission is LocationPermissionStatus.Unavailable ->
-            permission.message
-        mode == LocationMode.GPS && permission is LocationPermissionStatus.NeedsPermission ->
-            "Allow location access to follow a real journey."
-        else -> null
+        contentSource: ContentSource,
+        lastError: String?,
+    ): String? {
+        if (lastError != null) return lastError
+        return when {
+            contentSource == ContentSource.REMOTE ->
+                "Remote APIs enabled. Failures fall back to local simulation."
+            mode == LocationMode.GPS && permission is LocationPermissionStatus.Granted ->
+                "Using real GPS. Fixture places are centered on Gothenburg."
+            permission is LocationPermissionStatus.Denied ->
+                "Location permission denied. Simulation mode stays available."
+            permission is LocationPermissionStatus.Unavailable ->
+                permission.message
+            mode == LocationMode.GPS && permission is LocationPermissionStatus.NeedsPermission ->
+                "Allow location access to follow a real journey."
+            else -> null
+        }
     }
 }
 
@@ -117,6 +138,7 @@ fun SettingsScreen(
     state: SettingsUiState,
     onAutoPlay: (Boolean) -> Unit,
     onSimulationEnabled: (Boolean) -> Unit,
+    onRemoteEnabled: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -130,10 +152,21 @@ fun SettingsScreen(
             is SettingsUiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
             is SettingsUiState.Success -> {
                 SettingRow(
-                    title = "Simulation mode",
+                    title = "Simulation location",
                     subtitle = "Bundled Gothenburg route. Turn off to use real GPS.",
                     checked = state.simulationEnabled,
                     onChange = onSimulationEnabled,
+                )
+                SettingRow(
+                    title = "Remote content APIs",
+                    subtitle = if (state.remoteConfigured) {
+                        "Call discover/knowledge/dialogue/speech over HTTP"
+                    } else {
+                        "Add roadcast.api.baseUrl in local.properties first"
+                    },
+                    checked = state.remoteEnabled,
+                    onChange = onRemoteEnabled,
+                    enabled = state.remoteConfigured || state.remoteEnabled,
                 )
                 SettingRow(
                     title = "Autoplay stories",
@@ -148,10 +181,13 @@ fun SettingsScreen(
                     Column(Modifier.padding(18.dp)) {
                         Text("Privacy by design", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            if (state.simulationEnabled) {
-                                "This MVP sends no location or speech data to a network service."
-                            } else {
-                                "GPS stays on-device for ranking local fixtures. No location is uploaded."
+                            when {
+                                state.remoteEnabled ->
+                                    "Remote mode sends travel context and knowledge requests to your API base URL."
+                                state.simulationEnabled ->
+                                    "This MVP sends no location or speech data to a network service."
+                                else ->
+                                    "GPS stays on-device for ranking local fixtures. No location is uploaded."
                             },
                         )
                     }
@@ -167,12 +203,13 @@ private fun SettingRow(
     subtitle: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
     }
 }

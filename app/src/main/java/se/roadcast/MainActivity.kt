@@ -128,6 +128,7 @@ private fun RoadcastApp() {
                         state = state,
                         onAutoPlay = viewModel::setAutoPlay,
                         onSimulationEnabled = viewModel::setSimulationEnabled,
+                        onRemoteEnabled = viewModel::setRemoteEnabled,
                     )
                 }
                 composable(Destination.Debug.route) {
